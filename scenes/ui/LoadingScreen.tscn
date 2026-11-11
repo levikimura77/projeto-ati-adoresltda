@@ -1,0 +1,80 @@
+[gd_scene format=3 uid="uid://b78ux2pt105dj"]
+
+[ext_resource type="Script" uid="uid://dafbdt86b717a" path="res://scripts/ui/LoadingScreen.gd" id="1_loading"]
+[ext_resource type="Texture2D" uid="uid://dxpqqe0ra3je" path="res://scenes/ui/logo.png" id="2_qhghk"]
+
+[node name="LoadingScreen" type="Control" unique_id=389406150]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_loading")
+
+[node name="Background" type="ColorRect" parent="." unique_id=850223919]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.16, 1)
+
+[node name="Logo" type="TextureRect" parent="." unique_id=1660482929]
+layout_mode = 0
+offset_left = 478.0
+offset_top = 81.0
+offset_right = 1055.6846
+offset_bottom = 381.0
+scale = Vector2(0.5418182, 0.9222222)
+texture = ExtResource("2_qhghk")
+
+[node name="CenterBox" type="VBoxContainer" parent="." unique_id=1116779598]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -180.0
+offset_right = 320.0
+offset_bottom = 180.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="VBox" type="VBoxContainer" parent="CenterBox" unique_id=1711860924]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="CenterBox/VBox" unique_id=848532674]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "O JOGO"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="CenterBox/VBox" unique_id=2030041870]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+
+[node name="ProgressBar" type="ProgressBar" parent="CenterBox/VBox" unique_id=1663541880]
+custom_minimum_size = Vector2(600, 30)
+layout_mode = 2
+show_percentage = false
+
+[node name="LoadingLabel" type="Label" parent="CenterBox/VBox" unique_id=293012000]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
+theme_override_font_sizes/font_size = 17
+text = "Carregando..."
+horizontal_alignment = 1
+
+[node name="TickTimer" type="Timer" parent="." unique_id=211739731]
+wait_time = 0.04
+
+[node name="DotTimer" type="Timer" parent="." unique_id=2064926625]
+wait_time = 0.5

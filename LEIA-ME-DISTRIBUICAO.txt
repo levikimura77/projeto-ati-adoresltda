@@ -1,0 +1,4 @@
+ATICADORES LTDA - JOGO PARA WINDOWS
+
+Extraia o arquivo ZIP e abra AticadoresLTDA.exe com dois cliques.
+Nao e necessario instalar Python ou Pygame.

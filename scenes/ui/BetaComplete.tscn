@@ -1,0 +1,109 @@
+[gd_scene format=3 uid="uid://483ujsguoiuo"]
+
+[ext_resource type="Script" uid="uid://c8pqf3th1e3cq" path="res://scripts/ui/BetaComplete.gd" id="1_betacomplete"]
+
+[node name="BetaComplete" type="Control" unique_id=228009477]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_betacomplete")
+
+[node name="Background" type="ColorRect" parent="." unique_id=608668910]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.1, 0.03, 1)
+
+[node name="GlowRect" type="ColorRect" parent="." unique_id=1406733657]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.15
+anchor_top = 0.05
+anchor_right = 0.85
+anchor_bottom = 0.95
+color = Color(0.1, 0.6, 0.1, 0.12)
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1994331574]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -270.0
+offset_right = 420.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="TrophyLabel" type="Label" parent="VBox" unique_id=351588819]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 56
+text = "*** PARABENS! ***"
+horizontal_alignment = 1
+
+[node name="NameLabel" type="Label" parent="VBox" unique_id=1449954089]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 1, 0.55, 1)
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+
+[node name="Spacer1" type="Control" parent="VBox" unique_id=168278838]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="BetaLabel" type="Label" parent="VBox" unique_id=1928772660]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "Voce concluiu a versao beta de
+ATICADORES LTDA - O JOGO!"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="SubLabel" type="Label" parent="VBox" unique_id=1733235851]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 17
+text = "O Chefao foi derrotado e a sala foi libertada!
+A luta dos Aticadores continua..."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Spacer2" type="Control" parent="VBox" unique_id=1181375746]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+
+[node name="ButtonRow" type="HBoxContainer" parent="VBox" unique_id=987765770]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="PlayAgainButton" type="Button" parent="VBox/ButtonRow" unique_id=1431712776]
+custom_minimum_size = Vector2(190, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "JOGAR NOVAMENTE"
+
+[node name="MenuButton" type="Button" parent="VBox/ButtonRow" unique_id=578684230]
+custom_minimum_size = Vector2(170, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "MENU PRINCIPAL"
+
+[node name="ETELabel" type="Label" parent="VBox" unique_id=1325475761]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.45, 0.45, 1)
+theme_override_font_sizes/font_size = 13
+text = "ETE - Escola Tecnica Estadual Advogado Jose David Gil Rodrigues"
+horizontal_alignment = 1

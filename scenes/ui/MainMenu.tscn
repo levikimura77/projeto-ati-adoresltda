@@ -1,0 +1,150 @@
+[gd_scene format=3 uid="uid://cc2ybbmkkmtcc"]
+
+[ext_resource type="Script" uid="uid://bbcrl2rann4fa" path="res://scripts/ui/MainMenu.gd" id="1_mainmenu"]
+[ext_resource type="Texture2D" uid="uid://6y66g68seb07" path="res://scenes/ui/ChatGPT Image 19 de ago. de 2026, 12_50_59.png" id="2_2ysvc"]
+[ext_resource type="Texture2D" uid="uid://cjg6pltfrf07c" path="res://assets/sprites/ui/sheetbotao.png" id="3_xpiny"]
+[ext_resource type="Texture2D" uid="uid://cbvttr4sv6rsj" path="res://scenes/ui/ChatGPT Image 19 de ago. de 2026, 14_31_39.png" id="4_xpiny"]
+[ext_resource type="Texture2D" uid="uid://86pl8v8y5iy8" path="res://scenes/ui/ChatGPT Image 19 de ago. de 2026, 14_30_45.png" id="5_bhu4a"]
+
+[sub_resource type="Theme" id="Theme_e2per"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7mi0g"]
+atlas = ExtResource("3_xpiny")
+region = Rect2(310.94745, 10.243519, 925.12555, 284.16537)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_e2per"]
+atlas = ExtResource("4_xpiny")
+region = Rect2(270.22092, -1.599997, 1036.3772, 303.98166)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nqjyj"]
+atlas = ExtResource("5_bhu4a")
+region = Rect2(279.00003, 11.05809, 1007.33716, 284.9995)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7vr37"]
+atlas = ExtResource("3_xpiny")
+region = Rect2(307.7851, 275.19006, 930.7847, 262.90332)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xpiny"]
+atlas = ExtResource("4_xpiny")
+region = Rect2(270.46765, 270.11963, 1020.0791, 277.65906)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bhu4a"]
+atlas = ExtResource("5_bhu4a")
+region = Rect2(275.61053, 269.7918, 1003.4167, 276.0182)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kncl5"]
+atlas = ExtResource("3_xpiny")
+region = Rect2(313.91785, 523.3003, 901.2108, 254.58746)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ee60a"]
+atlas = ExtResource("4_xpiny")
+region = Rect2(271.57294, 522.8181, 995.9539, 251.72937)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qjd48"]
+atlas = ExtResource("5_bhu4a")
+region = Rect2(274.70932, 521.8685, 982.5062, 258.31433)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_clp4r"]
+atlas = ExtResource("3_xpiny")
+region = Rect2(320.9167, 780.00037, 893.6928, 230.2763)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ff4wq"]
+atlas = ExtResource("4_xpiny")
+region = Rect2(278.9763, 774.6749, 985.88574, 240.50769)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nqw28"]
+atlas = ExtResource("5_bhu4a")
+region = Rect2(289.0362, 778.6186, 966.1596, 232.0188)
+
+[node name="MainMenu" type="Control" unique_id=702524347]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mainmenu")
+
+[node name="Background" type="TextureRect" parent="." unique_id=1666041048]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_2ysvc")
+expand_mode = 1
+
+[node name="PlayButton" type="TextureButton" parent="." unique_id=1981053866]
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 0
+offset_left = 81.0
+offset_top = 245.0
+offset_right = 992.0
+offset_bottom = 522.0
+scale = Vector2(0.35, 0.35)
+theme = SubResource("Theme_e2per")
+texture_normal = SubResource("AtlasTexture_7mi0g")
+texture_pressed = SubResource("AtlasTexture_e2per")
+texture_hover = SubResource("AtlasTexture_nqjyj")
+
+[node name="OptionsButton" type="TextureButton" parent="." unique_id=1223307057]
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 0
+offset_left = 80.0
+offset_top = 338.0
+offset_right = 1010.0
+offset_bottom = 600.0
+scale = Vector2(0.35, 0.35)
+texture_normal = SubResource("AtlasTexture_7vr37")
+texture_pressed = SubResource("AtlasTexture_xpiny")
+texture_hover = SubResource("AtlasTexture_bhu4a")
+
+[node name="CreditsButton" type="TextureButton" parent="." unique_id=914969488]
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 0
+offset_left = 82.0
+offset_top = 425.0
+offset_right = 993.0
+offset_bottom = 679.0
+scale = Vector2(0.35, 0.35)
+texture_normal = SubResource("AtlasTexture_kncl5")
+texture_pressed = SubResource("AtlasTexture_ee60a")
+texture_hover = SubResource("AtlasTexture_qjd48")
+
+[node name="QuitButton" type="TextureButton" parent="." unique_id=214090037]
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 0
+offset_left = 83.99999
+offset_top = 513.0
+offset_right = 995.0
+offset_bottom = 743.0
+scale = Vector2(0.35, 0.35)
+texture_normal = SubResource("AtlasTexture_clp4r")
+texture_pressed = SubResource("AtlasTexture_ff4wq")
+texture_hover = SubResource("AtlasTexture_nqw28")
+
+[node name="VersionLabel" type="Label" parent="." unique_id=354691633]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.95
+anchor_right = 0.25
+anchor_bottom = 1.0
+offset_left = 35.0
+offset_right = 35.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 13
+text = "Versao Alpha"
+
+[node name="CreditsPopup" type="AcceptDialog" parent="." unique_id=979874831]
+title = "Creditos"
+dialog_text = "ATICADORES LTDA - O Jogo
+
+Desenvolvido por: Aticadores LTDA
+Escola Tecnica Estadual
+Advogado Jose David Gil Rodrigues
+
+Motor: Godot Engine 4.7
+Ano: 2025
+
+Obrigado por jogar!"

@@ -1,0 +1,35 @@
+63f7b34db8d8cdea90c76aacccf841ec
+::res://::1787268103
+icon.svg::CompressedTexture2D::1597849110223373421::1787268084::1787268084::1::::<><><>0<>0<>ed3fe181916bd8fadae2afd76894d471<>res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex::
+README.md::TextFile::-1::1787268084::0::1::::<><><>0<>0<><>::
+::res://assets/::1787268085
+::res://assets/sprites/::1787268085
+::res://assets/sprites/ui/::1787268085
+sheetbotao.png::CompressedTexture2D::5418836847695442878::1787268085::1787268085::1::::<><><>0<>0<>d1fc9d681ba2dc69a0b7bcefc484ee9a<>res://.godot/imported/sheetbotao.png-576f8212fb7717701de50743b90a18bf.ctex::
+::res://scenes/::1787268085
+::res://scenes/gameplay/::1787268085
+GameWorld.tscn::PackedScene::8078337280634309616::1787268085::0::1::::<><><>0<>0<><>::uid://crjjecnraynlg::::res://scripts/gameplay/GameWorld.gd<>uid://l381oe1jlu5m::::res://scripts/gameplay/Player.gd<>uid://p81qnowkkbco::::res://scripts/gameplay/Boss.gd
+::res://scenes/ui/::1787268085
+BetaComplete.tscn::PackedScene::2105337223879000902::1787268085::0::1::::<><><>0<>0<><>::uid://c8pqf3th1e3cq::::res://scripts/ui/BetaComplete.gd
+CharacterSelect.tscn::PackedScene::4455816500244331104::1787268085::0::1::::<><><>0<>0<><>::uid://3iftjtcaiibj::::res://scripts/ui/CharacterSelect.gd<>uid://6y66g68seb07::::res://scenes/ui/ChatGPT Image 19 de ago. de 2026, 12_50_59.png
+ChatGPT Image 19 de ago. de 2026, 12_50_59.png::CompressedTexture2D::2227337169815870742::1787268085::1787268085::1::::<><><>0<>0<>78d32a0dfbb0e50ebb9f7161aa8bf6bb<>res://.godot/imported/ChatGPT Image 19 de ago. de 2026, 12_50_59.png-4fe3b47888f19c566a2380988656fdff.ctex::
+ChatGPT Image 19 de ago. de 2026, 14_30_45.png::CompressedTexture2D::2381159716299450305::1787268085::1787268085::1::::<><><>0<>0<>005dc2c6351d8f77b96d533533959f3c<>res://.godot/imported/ChatGPT Image 19 de ago. de 2026, 14_30_45.png-ab1b333f01874397cf943292fd125a22.ctex::
+ChatGPT Image 19 de ago. de 2026, 14_31_39.png::CompressedTexture2D::4887570635349665529::1787268085::1787268085::1::::<><><>0<>0<>bf09efe600576a2e51d6dbd0dd2f1454<>res://.godot/imported/ChatGPT Image 19 de ago. de 2026, 14_31_39.png-e185c4923845a77d43094ae90f6baf0e.ctex::
+LoadingScreen.tscn::PackedScene::4701845001310807151::1787268085::0::1::::<><><>0<>0<><>::uid://dafbdt86b717a::::res://scripts/ui/LoadingScreen.gd<>uid://dxpqqe0ra3je::::res://scenes/ui/logo.png
+logo.png::CompressedTexture2D::258987394562903254::1787268085::1787268085::1::::<><><>0<>0<>0d86af7772c56598c8a14a13c4cdff9f<>res://.godot/imported/logo.png-e91f9ba7acd0d4057650e9b236a66bd0.ctex::
+MainMenu.tscn::PackedScene::4970416319171395282::1787268085::0::1::::<><><>0<>0<><>::uid://bbcrl2rann4fa::::res://scripts/ui/MainMenu.gd<>uid://6y66g68seb07::::res://scenes/ui/ChatGPT Image 19 de ago. de 2026, 12_50_59.png<>uid://cjg6pltfrf07c::::res://assets/sprites/ui/sheetbotao.png<>uid://cbvttr4sv6rsj::::res://scenes/ui/ChatGPT Image 19 de ago. de 2026, 14_31_39.png<>uid://86pl8v8y5iy8::::res://scenes/ui/ChatGPT Image 19 de ago. de 2026, 14_30_45.png
+menu-final.png::CompressedTexture2D::6413763403905552128::1787268085::1787268085::1::::<><><>0<>0<>b41040ebb267b3aed282d70b4fb2410b<>res://.godot/imported/menu-final.png-d45262b2cd8e0195d726d1da11dcbfdc.ctex::
+SettingsScreen.tscn::PackedScene::-1::1787268085::0::1::::<><><>0<>0<><>::res://scripts/ui/SettingsScreen.gd
+::res://scripts/::1787268085
+::res://scripts/gameplay/::1787268085
+Boss.gd::GDScript::1122565040413015430::1787268085::0::1::::<>CharacterBody2D<><>0<>0<><>::
+GameWorld.gd::GDScript::5985184831032326992::1787268085::0::1::::<>Node2D<><>0<>0<><>::
+Player.gd::GDScript::831930691234774784::1787268085::0::1::::<>CharacterBody2D<><>0<>0<><>::
+::res://scripts/global/::1787268085
+GameState.gd::GDScript::5812277035805517171::1787268085::0::1::::<>Node<><>0<>0<><>::
+::res://scripts/ui/::1787268085
+BetaComplete.gd::GDScript::7121020774964025636::1787268085::0::1::::<>Control<><>0<>0<><>::
+CharacterSelect.gd::GDScript::1982140661098040075::1787268085::0::1::::<>Control<><>0<>0<><>::
+LoadingScreen.gd::GDScript::7169651064557405016::1787268085::0::1::::<>Control<><>0<>0<><>::
+MainMenu.gd::GDScript::2461791559859282710::1787268085::0::1::::<>Control<><>0<>0<><>::
+SettingsScreen.gd::GDScript::2309871325905672956::1787268085::0::1::::<>Control<><>0<>0<><>::

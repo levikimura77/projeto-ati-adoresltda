@@ -1,0 +1,242 @@
+[gd_scene load_steps=2 format=3 uid="uid://b_settings"]
+
+[ext_resource type="Script" path="res://scripts/ui/SettingsScreen.gd" id="1_settings"]
+
+[node name="SettingsScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_settings")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.04, 0.06, 0.20, 1)
+
+[node name="MainPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -430.0
+offset_top = -330.0
+offset_right = 430.0
+offset_bottom = 330.0
+
+[node name="HBox" type="HBoxContainer" parent="MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TabsVBox" type="VBoxContainer" parent="MainPanel/HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 0)
+alignment = 0
+theme_override_constants/separation = 8
+
+[node name="PanelTitle" type="Label" parent="MainPanel/HBox/TabsVBox"]
+layout_mode = 2
+text = "CONFIGURACOES"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(1.0, 0.9, 0.3, 1)
+
+[node name="TabScreen" type="Button" parent="MainPanel/HBox/TabsVBox"]
+layout_mode = 2
+text = "TELA"
+theme_override_font_sizes/font_size = 14
+
+[node name="TabAudio" type="Button" parent="MainPanel/HBox/TabsVBox"]
+layout_mode = 2
+text = "AUDIO"
+theme_override_font_sizes/font_size = 14
+
+[node name="TabMusic" type="Button" parent="MainPanel/HBox/TabsVBox"]
+layout_mode = 2
+text = "MUSICA"
+theme_override_font_sizes/font_size = 14
+
+[node name="TabLanguage" type="Button" parent="MainPanel/HBox/TabsVBox"]
+layout_mode = 2
+text = "IDIOMA"
+theme_override_font_sizes/font_size = 14
+
+[node name="TabSaveData" type="Button" parent="MainPanel/HBox/TabsVBox"]
+layout_mode = 2
+text = "DADOS\nSALVOS"
+theme_override_font_sizes/font_size = 13
+
+[node name="VSep" type="VSeparator" parent="MainPanel/HBox"]
+layout_mode = 2
+
+[node name="ContentVBox" type="VBoxContainer" parent="MainPanel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ScreenSectionLabel" type="Label" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+text = "TELA:"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.6, 0.88, 1.0, 1)
+
+[node name="FullscreenCheck" type="CheckBox" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+text = "  Tela Cheia"
+theme_override_font_sizes/font_size = 15
+
+[node name="BrightnessRow" type="HBoxContainer" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BrightnessLabel" type="Label" parent="MainPanel/HBox/ContentVBox/BrightnessRow"]
+layout_mode = 2
+text = "Brilho:   "
+theme_override_font_sizes/font_size = 14
+vertical_alignment = 1
+
+[node name="BrightnessSlider" type="HSlider" parent="MainPanel/HBox/ContentVBox/BrightnessRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+value = 0.7
+
+[node name="BrightnessValue" type="Label" parent="MainPanel/HBox/ContentVBox/BrightnessRow"]
+layout_mode = 2
+text = "70"
+custom_minimum_size = Vector2(34, 0)
+theme_override_font_sizes/font_size = 14
+
+[node name="AudioSectionLabel" type="Label" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+text = "AUDIO:"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.6, 0.88, 1.0, 1)
+
+[node name="MasterRow" type="HBoxContainer" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MasterLabel" type="Label" parent="MainPanel/HBox/ContentVBox/MasterRow"]
+layout_mode = 2
+text = "Volume Geral:    "
+theme_override_font_sizes/font_size = 14
+vertical_alignment = 1
+
+[node name="MasterSlider" type="HSlider" parent="MainPanel/HBox/ContentVBox/MasterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+value = 0.8
+
+[node name="MasterValue" type="Label" parent="MainPanel/HBox/ContentVBox/MasterRow"]
+layout_mode = 2
+text = "80"
+custom_minimum_size = Vector2(34, 0)
+theme_override_font_sizes/font_size = 14
+
+[node name="SFXRow" type="HBoxContainer" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SFXLabel" type="Label" parent="MainPanel/HBox/ContentVBox/SFXRow"]
+layout_mode = 2
+text = "Efeitos Sonoros: "
+theme_override_font_sizes/font_size = 14
+vertical_alignment = 1
+
+[node name="SFXSlider" type="HSlider" parent="MainPanel/HBox/ContentVBox/SFXRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+value = 0.8
+
+[node name="SFXValue" type="Label" parent="MainPanel/HBox/ContentVBox/SFXRow"]
+layout_mode = 2
+text = "80"
+custom_minimum_size = Vector2(34, 0)
+theme_override_font_sizes/font_size = 14
+
+[node name="MusicSectionLabel" type="Label" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+text = "MUSICA:"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.6, 0.88, 1.0, 1)
+
+[node name="MusicRow" type="HBoxContainer" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MusicLabel" type="Label" parent="MainPanel/HBox/ContentVBox/MusicRow"]
+layout_mode = 2
+text = "Volume da Musica:"
+theme_override_font_sizes/font_size = 14
+vertical_alignment = 1
+
+[node name="MusicSlider" type="HSlider" parent="MainPanel/HBox/ContentVBox/MusicRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+value = 0.6
+
+[node name="MusicValue" type="Label" parent="MainPanel/HBox/ContentVBox/MusicRow"]
+layout_mode = 2
+text = "60"
+custom_minimum_size = Vector2(34, 0)
+theme_override_font_sizes/font_size = 14
+
+[node name="LanguageSectionLabel" type="Label" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+text = "IDIOMA:"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.6, 0.88, 1.0, 1)
+
+[node name="LanguageOption" type="OptionButton" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+
+[node name="SaveDataSectionLabel" type="Label" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+text = "DADOS SALVOS:"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.6, 0.88, 1.0, 1)
+
+[node name="ClearSaveButton" type="Button" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+text = "EXCLUIR DADOS SALVOS"
+theme_override_font_sizes/font_size = 14
+
+[node name="FeedbackLabel" type="Label" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+text = ""
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.3, 1.0, 0.4, 1)
+
+[node name="ButtonRow" type="HBoxContainer" parent="MainPanel/HBox/ContentVBox"]
+layout_mode = 2
+alignment = 2
+theme_override_constants/separation = 12
+
+[node name="CancelButton" type="Button" parent="MainPanel/HBox/ContentVBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(130, 42)
+text = "CANCELAR"
+theme_override_font_sizes/font_size = 16
+
+[node name="SaveButton" type="Button" parent="MainPanel/HBox/ContentVBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(130, 42)
+text = "SALVAR"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.3, 0.9, 1.0, 1)

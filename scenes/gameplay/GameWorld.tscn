@@ -1,0 +1,334 @@
+[gd_scene format=3 uid="uid://dndhbgf5u6eqi"]
+
+[ext_resource type="Script" uid="uid://crjjecnraynlg" path="res://scripts/gameplay/GameWorld.gd" id="1_gw"]
+[ext_resource type="Script" uid="uid://l381oe1jlu5m" path="res://scripts/gameplay/Player.gd" id="2_player"]
+[ext_resource type="Script" uid="uid://p81qnowkkbco" path="res://scripts/gameplay/Boss.gd" id="3_boss"]
+
+[sub_resource type="RectangleShape2D" id="Shape_wall_h"]
+size = Vector2(1280, 24)
+
+[sub_resource type="RectangleShape2D" id="Shape_wall_v"]
+size = Vector2(24, 720)
+
+[sub_resource type="RectangleShape2D" id="Shape_boss_hit"]
+size = Vector2(60, 76)
+
+[sub_resource type="RectangleShape2D" id="Shape_player"]
+size = Vector2(28, 44)
+
+[sub_resource type="RectangleShape2D" id="Shape_punch"]
+size = Vector2(52, 36)
+
+[node name="GameWorld" type="Node2D" unique_id=823761099]
+position = Vector2(640, 360)
+script = ExtResource("1_gw")
+
+[node name="Room" type="Node2D" parent="." unique_id=99150740]
+
+[node name="Floor" type="ColorRect" parent="Room" unique_id=328226364]
+offset_left = -640.0
+offset_top = -360.0
+offset_right = 640.0
+offset_bottom = 360.0
+color = Color(0.55, 0.44, 0.3, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="WallNorth" type="ColorRect" parent="Room" unique_id=1077709875]
+offset_left = -640.0
+offset_top = -360.0
+offset_right = 640.0
+offset_bottom = -328.0
+color = Color(0.22, 0.17, 0.12, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="WallSouth" type="ColorRect" parent="Room" unique_id=897983199]
+offset_left = -640.0
+offset_top = 328.0
+offset_right = 640.0
+offset_bottom = 360.0
+color = Color(0.22, 0.17, 0.12, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="WallWest" type="ColorRect" parent="Room" unique_id=565787635]
+offset_left = -640.0
+offset_top = -360.0
+offset_right = -608.0
+offset_bottom = 360.0
+color = Color(0.22, 0.17, 0.12, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="WallEast" type="ColorRect" parent="Room" unique_id=102986910]
+offset_left = 608.0
+offset_top = -360.0
+offset_right = 640.0
+offset_bottom = 360.0
+color = Color(0.22, 0.17, 0.12, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Blackboard" type="ColorRect" parent="Room" unique_id=915457813]
+offset_left = -300.0
+offset_top = -352.0
+offset_right = 300.0
+offset_bottom = -296.0
+color = Color(0.1, 0.3, 0.12, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="BlackboardLabel" type="Label" parent="Room" unique_id=1018850465]
+offset_left = -100.0
+offset_top = -346.0
+offset_right = -100.0
+offset_bottom = -346.0
+theme_override_colors/font_color = Color(0.85, 1, 0.85, 1)
+theme_override_font_sizes/font_size = 14
+text = "  Sala da Batalha  "
+metadata/_edit_use_anchors_ = true
+
+[node name="Desk1" type="ColorRect" parent="Room" unique_id=1733634057]
+offset_left = -520.0
+offset_top = -220.0
+offset_right = -380.0
+offset_bottom = -140.0
+color = Color(0.42, 0.3, 0.14, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Desk2" type="ColorRect" parent="Room" unique_id=1318476998]
+offset_left = -190.0
+offset_top = -220.0
+offset_right = -50.0
+offset_bottom = -140.0
+color = Color(0.42, 0.3, 0.14, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Desk3" type="ColorRect" parent="Room" unique_id=1890556718]
+offset_left = 60.0
+offset_top = -220.0
+offset_right = 200.0
+offset_bottom = -140.0
+color = Color(0.42, 0.3, 0.14, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Desk4" type="ColorRect" parent="Room" unique_id=2099546233]
+offset_left = 380.0
+offset_top = -220.0
+offset_right = 520.0
+offset_bottom = -140.0
+color = Color(0.42, 0.3, 0.14, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Walls" type="StaticBody2D" parent="Room" unique_id=138439227]
+collision_mask = 0
+
+[node name="WallNorthCol" type="CollisionShape2D" parent="Room/Walls" unique_id=500250818]
+position = Vector2(0, -344)
+shape = SubResource("Shape_wall_h")
+
+[node name="WallSouthCol" type="CollisionShape2D" parent="Room/Walls" unique_id=806491529]
+position = Vector2(0, 344)
+shape = SubResource("Shape_wall_h")
+
+[node name="WallWestCol" type="CollisionShape2D" parent="Room/Walls" unique_id=1162096939]
+position = Vector2(-624, 0)
+shape = SubResource("Shape_wall_v")
+
+[node name="WallEastCol" type="CollisionShape2D" parent="Room/Walls" unique_id=1408639211]
+position = Vector2(624, 0)
+shape = SubResource("Shape_wall_v")
+
+[node name="NPCGuide" type="Node2D" parent="." unique_id=1484056183]
+position = Vector2(-300, 80)
+
+[node name="Body" type="ColorRect" parent="NPCGuide" unique_id=278495844]
+offset_left = -18.0
+offset_top = -36.0
+offset_right = 18.0
+offset_bottom = 4.0
+color = Color(0.9, 0.72, 0.32, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Head" type="ColorRect" parent="NPCGuide" unique_id=202907835]
+offset_left = -13.0
+offset_top = -54.0
+offset_right = 13.0
+offset_bottom = -36.0
+color = Color(0.95, 0.8, 0.6, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="NameLabel" type="Label" parent="NPCGuide" unique_id=85691136]
+offset_left = -60.0
+offset_top = -76.0
+offset_right = 60.0
+offset_bottom = -56.0
+theme_override_colors/font_color = Color(1, 0.92, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+text = "Lider"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Boss" type="CharacterBody2D" parent="." unique_id=821930070]
+position = Vector2(0, -200)
+collision_layer = 2
+script = ExtResource("3_boss")
+
+[node name="Body" type="ColorRect" parent="Boss" unique_id=479904821]
+offset_left = -24.0
+offset_top = -52.0
+offset_right = 24.0
+offset_bottom = 4.0
+color = Color(0.65, 0.08, 0.08, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Head" type="ColorRect" parent="Boss" unique_id=687428311]
+offset_left = -18.0
+offset_top = -70.0
+offset_right = 18.0
+offset_bottom = -52.0
+color = Color(0.8, 0.36, 0.18, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="BossLabel" type="Label" parent="Boss" unique_id=702300070]
+offset_left = -80.0
+offset_top = -95.0
+offset_right = 80.0
+offset_bottom = -75.0
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 14
+text = "!! CHEFAO !!"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="HitArea" type="Area2D" parent="Boss" unique_id=509160742]
+position = Vector2(1, -33)
+collision_layer = 2
+collision_mask = 4
+
+[node name="HitShape" type="CollisionShape2D" parent="Boss/HitArea" unique_id=1295750284]
+shape = SubResource("Shape_boss_hit")
+
+[node name="Player" type="CharacterBody2D" parent="." unique_id=1631967061]
+position = Vector2(0, 180)
+collision_mask = 3
+script = ExtResource("2_player")
+
+[node name="Body" type="ColorRect" parent="Player" unique_id=2044283800]
+offset_left = -14.0
+offset_top = -32.0
+offset_right = 14.0
+offset_bottom = 4.0
+color = Color(0.25, 0.45, 0.85, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Head" type="ColorRect" parent="Player" unique_id=443652729]
+offset_left = -11.0
+offset_top = -48.0
+offset_right = 11.0
+offset_bottom = -32.0
+color = Color(0.95, 0.8, 0.6, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="NameLabel" type="Label" parent="Player" unique_id=1847098358]
+offset_left = -60.0
+offset_top = -70.0
+offset_right = 60.0
+offset_bottom = -52.0
+theme_override_colors/font_color = Color(0.5, 1, 1, 1)
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerCollision" type="CollisionShape2D" parent="Player" unique_id=1258232142]
+shape = SubResource("Shape_player")
+
+[node name="PunchArea" type="Area2D" parent="Player" unique_id=892825517]
+position = Vector2(0, -16)
+collision_layer = 4
+collision_mask = 2
+
+[node name="PunchShape" type="CollisionShape2D" parent="Player/PunchArea" unique_id=22306742]
+shape = SubResource("Shape_punch")
+disabled = true
+
+[node name="PunchFlash" type="ColorRect" parent="Player" unique_id=247708608]
+visible = false
+offset_left = -28.0
+offset_top = -56.0
+offset_right = 28.0
+offset_bottom = -16.0
+color = Color(1, 0.92, 0.1, 0.75)
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=603065987]
+
+[node name="PlayerHPLabel" type="Label" parent="HUD" unique_id=306936653]
+offset_left = 10.0
+offset_top = 16.0
+offset_right = 270.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(1, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 14
+text = "HP Jogador"
+
+[node name="PlayerHP" type="ProgressBar" parent="HUD" unique_id=720564844]
+offset_left = 10.0
+offset_top = 36.0
+offset_right = 270.0
+offset_bottom = 60.0
+value = 100.0
+show_percentage = false
+
+[node name="BossHPLabel" type="Label" parent="HUD" unique_id=485844810]
+offset_left = 820.0
+offset_top = 8.0
+offset_right = 1260.0
+offset_bottom = 28.0
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Chefao  200 / 200"
+horizontal_alignment = 2
+
+[node name="BossHP" type="ProgressBar" parent="HUD" unique_id=524936209]
+offset_left = 1000.0
+offset_top = 28.0
+offset_right = 1260.0
+offset_bottom = 52.0
+max_value = 200.0
+value = 200.0
+show_percentage = false
+
+[node name="ControlsHint" type="Label" parent="HUD" unique_id=104254751]
+visible = false
+offset_left = 180.0
+offset_top = 690.0
+offset_right = 1100.0
+offset_bottom = 716.0
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+
+[node name="DialogueBox" type="PanelContainer" parent="HUD" unique_id=1169241768]
+visible = false
+offset_left = 80.0
+offset_top = 510.0
+offset_right = 1200.0
+offset_bottom = 705.0
+
+[node name="VBox" type="VBoxContainer" parent="HUD/DialogueBox" unique_id=1426400231]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SpeakerLabel" type="Label" parent="HUD/DialogueBox/VBox" unique_id=562827337]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.3, 1)
+theme_override_font_sizes/font_size = 16
+text = "Lider:"
+
+[node name="DialogueText" type="Label" parent="HUD/DialogueBox/VBox" unique_id=1741740017]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 16
+autowrap_mode = 3
+
+[node name="ContinueHint" type="Label" parent="HUD/DialogueBox/VBox" unique_id=576629024]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = "> Pressione ESPACO ou ENTER para continuar"
+horizontal_alignment = 2

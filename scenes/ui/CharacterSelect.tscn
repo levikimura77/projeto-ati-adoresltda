@@ -1,0 +1,151 @@
+[gd_scene format=3 uid="uid://b4qov8wdo87ii"]
+
+[ext_resource type="Script" uid="uid://3iftjtcaiibj" path="res://scripts/ui/CharacterSelect.gd" id="1_charselect"]
+[ext_resource type="Texture2D" uid="uid://6y66g68seb07" path="res://scenes/ui/ChatGPT Image 19 de ago. de 2026, 12_50_59.png" id="2_2todw"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fily5"]
+bg_color = Color(0.6509804, 0.6509804, 0.6509804, 0.64705884)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_r0o0e"]
+bg_color = Color(0.41215244, 0.4121525, 0.41215235, 0.64705884)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hjnfi"]
+bg_color = Color(0.7121294, 0.7121294, 0.71212924, 0.64705884)
+
+[node name="CharacterSelect" type="Control" unique_id=1308393656]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_charselect")
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1768576298]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 720.0
+texture = ExtResource("2_2todw")
+expand_mode = 1
+
+[node name="Background" type="ColorRect" parent="." unique_id=921276672]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.627451)
+
+[node name="BackButton" type="Button" parent="." unique_id=1678962595]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.01
+anchor_top = 0.02
+anchor_right = 0.01
+anchor_bottom = 0.02
+offset_right = 120.0
+offset_bottom = 44.0
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_fily5")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_r0o0e")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hjnfi")
+text = "<- Voltar"
+
+[node name="Panel" type="PanelContainer" parent="." unique_id=1803960340]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -390.0
+offset_top = -270.0
+offset_right = 390.0
+offset_bottom = 290.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Panel" unique_id=1171633374]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Title" type="Label" parent="Panel/VBox" unique_id=1075456570]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+theme_override_font_sizes/font_size = 28
+text = "ESCOLHA SEU PERSONAGEM"
+horizontal_alignment = 1
+
+[node name="NameRow" type="HBoxContainer" parent="Panel/VBox" unique_id=1051878997]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="NameLabel" type="Label" parent="Panel/VBox/NameRow" unique_id=649803066]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "Qual o nome do jogador?"
+vertical_alignment = 1
+
+[node name="NameInput" type="LineEdit" parent="Panel/VBox/NameRow" unique_id=1587992930]
+custom_minimum_size = Vector2(220, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+placeholder_text = "Digite aqui..."
+max_length = 20
+
+[node name="ErrorLabel" type="Label" parent="Panel/VBox" unique_id=2000964876]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+
+[node name="CharRow" type="HBoxContainer" parent="Panel/VBox" unique_id=1962021979]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="LeftArrow" type="Button" parent="Panel/VBox/CharRow" unique_id=984114804]
+custom_minimum_size = Vector2(52, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "<"
+
+[node name="CharPanel" type="VBoxContainer" parent="Panel/VBox/CharRow" unique_id=1329385317]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="CharIcon" type="Label" parent="Panel/VBox/CharRow/CharPanel" unique_id=1865767352]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "Masculino"
+horizontal_alignment = 1
+
+[node name="CharDisplay" type="ColorRect" parent="Panel/VBox/CharRow/CharPanel" unique_id=533645579]
+custom_minimum_size = Vector2(72, 110)
+layout_mode = 2
+size_flags_horizontal = 4
+color = Color(0.25, 0.45, 0.85, 1)
+
+[node name="CharLabel" type="Label" parent="Panel/VBox/CharRow/CharPanel" unique_id=368280113]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+
+[node name="RightArrow" type="Button" parent="Panel/VBox/CharRow" unique_id=10454099]
+custom_minimum_size = Vector2(52, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = ">"
+
+[node name="OKButton" type="Button" parent="Panel/VBox" unique_id=1199004228]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.3, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 24
+text = "OK"
