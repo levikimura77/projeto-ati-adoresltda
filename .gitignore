@@ -1,6 +1,1 @@
-.build-venv/
-build/
-dist/
-release/
-__pycache__/
-*.py[cod]
+
