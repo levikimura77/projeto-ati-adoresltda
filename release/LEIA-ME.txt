@@ -1,4 +1,9 @@
-ATICADORES LTDA - JOGO PARA WINDOWS
+ATIÇADORES LTDA - CAMPANHA PARA WINDOWS
 
-Extraia o arquivo ZIP e abra AticadoresLTDA.exe com dois cliques.
-Nao e necessario instalar Python ou Pygame.
+Extraia o ZIP e abra AticadoresLTDA-Campanha.exe.
+O executável já inclui Python e Pygame.
+
+WASD ou setas para andar. E para conversar.
+Espaço ou Z para socar. Clique esquerdo para lançar papel.
+Segure C ou Shift para bloquear um golpe. Q ativa a habilidade da classe.
+Esc abre a pausa. Escolha Salvar e sair para guardar a partida.

@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='AticadoresLTDA',
+    name='AticadoresLTDA-Campanha',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

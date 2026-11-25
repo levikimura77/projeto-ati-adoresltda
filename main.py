@@ -13,28 +13,23 @@ from pathlib import Path
 
 import pygame
 
-ROOT = Path(__file__).resolve().parent
+from campaign import CHAPTERS, ROLES, ROOMS, VERDICTS
+from chip_audio import RATE, speech_pcm, theme_pcm
+from pixel_people import projectile, sprite
+from school_maps import CLASSROOM_DESKS, FURNITURE, build_maps, campus
+
 W, H = 1280, 720
 FPS = 60
-WHITE = (245, 245, 245)
-GOLD = (255, 225, 76)
-CYAN = (125, 220, 255)
-BG = (10, 14, 40)
-
-
-def asset(*parts: str) -> Path:
-    return ROOT.joinpath(*parts)
-
-
-def load_image(path: Path):
-    try:
-        return pygame.image.load(str(path)).convert_alpha()
-    except (pygame.error, FileNotFoundError):
-        return None
+WHITE = (247, 240, 220)
+GOLD = (249, 201, 116)
+CYAN = (139, 221, 201)
+LOGO_COLORS = ((255, 198, 57), (68, 209, 255), (140, 223, 57), (255, 92, 87), (194, 112, 253))
 
 
 class Game:
-    CLASSROOM_DESKS = ((112, 150), (320, 150), (850, 150), (1060, 150), (116, 485), (1060, 485))
+    DOORWAY = pygame.Rect(1214, 526, 45, 88)
+    ARENA = pygame.Rect(555, 275, 170, 148)
+    BOSS_STYLES = ("Rafa", "Bia", "Prof. André", "Alex")
     DIFFICULTIES = {
         "easy": {"hp": 200, "speed": 65, "interval": 1.8, "damage": 10, "rps_interval": None, "rps_speed": 0, "rps_damage": 0},
         "medium": {"hp": 230, "speed": 78, "interval": 1.55, "damage": 12, "rps_interval": None, "rps_speed": 0, "rps_damage": 0},
@@ -44,14 +39,20 @@ class Game:
     DIFFICULTY_ORDER = ("easy", "medium", "hard", "impossible")
 
     def __init__(self):
+        pygame.mixer.pre_init(RATE, -16, 2, 512)
         pygame.init()
         pygame.display.set_caption("Atiçadores LTDA — O Jogo")
         self.screen = pygame.display.set_mode((W, H), pygame.RESIZABLE)
         self.canvas = pygame.Surface((W, H))
         self.clock = pygame.time.Clock()
         self.fonts = {}
-        self.images = {}
-        self.load_assets()
+        self.campus_art = campus((W, H))
+        self.menu_art = self.load_menu_art()
+        self.menu_buttons = self.load_menu_buttons()
+        self.school_logo = self.load_ui_image("logo.png")
+        self.title_font = pygame.font.SysFont("consolas", 61, bold=True)
+        self.maps = build_maps((W, H))
+        self.room_obstacles = tuple(tuple(pygame.Rect(box) for box in boxes) for boxes in FURNITURE)
         self.state = "loading"
         self.paused = False
         self.settings_return_to_pause = False
@@ -63,6 +64,15 @@ class Game:
         self.name = "Jogador"
         self.gender = "boy"
         self.difficulty = "easy"
+        self.role = "attack"
+        self.room_index = 0
+        self.talked = set()
+        self.dialogue = []
+        self.speaker = None
+        self.skill_timer = self.dash_time = self.ally_timer = self.guard_clock = 0.0
+        self.dash_direction = pygame.Vector2()
+        self.combat_message = ""
+        self.combat_message_timer = 0.0
         self.settings = {"brightness": .7, "master": .8, "sfx": .8,
                          "music": .6, "fullscreen": False, "language": "pt_BR"}
         self.settings_draft = self.settings.copy()
@@ -101,6 +111,9 @@ class Game:
         self.block_keys_down = set()
         self.block_press_consumed = False
         self.block_flash = 0.0
+        self.player_throw_time = self.boss_throw_time = 0.0
+        self.throw_direction = pygame.Vector2(0, 1)
+        self.speech_age = 0.0
         self.rps_attack_timer = 0.0
         self.projectiles = []
         self.paper_projectiles = []
@@ -113,73 +126,6 @@ class Game:
         self.slider_drag = None
         self.save_path = Path.home() / ".aticadores_save.json"
 
-    def load_assets(self):
-        names = {
-            "loading_logo": ("assets", "ui", "logo.png"),
-            "menu_bg": ("assets", "ui", "ChatGPT Image 19 de ago. de 2026, 12_50_59.png"),
-            "select_bg": ("assets", "ui", "ChatGPT Image 19 de ago. de 2026, 12_50_59.png"),
-            "button_normal": ("assets", "ui", "sheetbotao.png"),
-            "button_pressed": ("assets", "ui", "ChatGPT Image 19 de ago. de 2026, 14_31_39.png"),
-            "button_hover": ("assets", "ui", "ChatGPT Image 19 de ago. de 2026, 14_30_45.png"),
-            "boy": ("assets", "ui", "mininu.png"),
-            "girl": ("assets", "ui", "minina.png"),
-            "professor": ("assets", "ui", "professo.png"),
-        }
-        self.images = {k: load_image(asset(*p)) for k, p in names.items()}
-        self.player_frames = {}
-        self.player_punch_frames = {}
-        self.player_hurt_frames = {}
-        self.player_block_frames = {}
-        for gender in ("boy", "girl"):
-            self.player_frames[gender] = {
-                "idle_down": [self.make_player_sprite(gender, "down", 0)],
-                "idle_up": [self.make_player_sprite(gender, "up", 0)],
-                "idle_side": [self.make_player_sprite(gender, "side", 0)],
-                "walk_down": [self.make_player_sprite(gender, "down", 0), self.make_player_sprite(gender, "down", 1)],
-                "walk_up": [self.make_player_sprite(gender, "up", 0), self.make_player_sprite(gender, "up", 1)],
-                "walk_right": [self.make_player_sprite(gender, "side", 0), self.make_player_sprite(gender, "side", 1)],
-                "walk_left": [pygame.transform.flip(self.make_player_sprite(gender, "side", 0), True, False),
-                              pygame.transform.flip(self.make_player_sprite(gender, "side", 1), True, False)],
-            }
-            self.player_punch_frames[gender] = {
-                facing: [self.make_player_sprite(gender, facing, 0, "punch"),
-                         self.make_player_sprite(gender, facing, 1, "punch")]
-                for facing in ("down", "up", "side")
-            }
-            self.player_hurt_frames[gender] = {
-                facing: self.make_player_sprite(gender, facing, 0, "hurt")
-                for facing in ("down", "up", "side")
-            }
-            self.player_block_frames[gender] = {
-                facing: self.make_player_sprite(gender, facing, 0, "block")
-                for facing in ("down", "up", "side")
-            }
-        self.menu_buttons = self.load_menu_buttons()
-        self.boss_sprites = [self.make_boss_sprite(0), self.make_boss_sprite(1)]
-        self.boss_attack_sprites = [self.make_boss_sprite(0, "attack"), self.make_boss_sprite(1, "attack")]
-        self.boss_hurt_sprites = [self.make_boss_sprite(0, "hurt"), self.make_boss_sprite(1, "hurt")]
-
-    def load_menu_buttons(self):
-        regions = [
-            (311, 10, 925, 284, 270, 0, 1036, 304, 279, 11, 1007, 285),
-            (308, 275, 931, 263, 270, 270, 1020, 278, 276, 270, 1003, 276),
-            (314, 523, 901, 255, 272, 523, 996, 252, 275, 522, 983, 258),
-            (321, 780, 894, 230, 279, 775, 986, 241, 289, 779, 966, 232),
-        ]
-        normal, pressed, hover = (self.images.get(k) for k in ("button_normal", "button_pressed", "button_hover"))
-        buttons = []
-        for r in regions:
-            sprites = []
-            for image, offset in ((normal, 0), (pressed, 4), (hover, 8)):
-                if not image:
-                    sprites.append(None)
-                    continue
-                x, y, w, h = r[offset:offset+4]
-                x, y = max(0, x), max(0, y)
-                w, h = min(w, image.get_width()-x), min(h, image.get_height()-y)
-                sprites.append(image.subsurface((x, y, w, h)).copy() if w > 0 and h > 0 else None)
-            buttons.append(sprites)
-        return buttons
 
     def font(self, size):
         if size not in self.fonts:
@@ -191,13 +137,36 @@ class Game:
         return english if values.get("language") == "en" else portuguese
 
     def difficulty_profile(self):
-        return self.DIFFICULTIES.get(self.difficulty, self.DIFFICULTIES["easy"])
+        profile = self.DIFFICULTIES[self.difficulty].copy()
+        if self.room_index == 2:
+            profile.update(speed=profile["speed"]*.8, rps_interval=2.6, rps_speed=245, rps_damage=10)
+        elif self.room_index == 3:
+            profile.update(hp=profile["hp"]+40, speed=profile["speed"]*.85, rps_interval=None)
+        elif self.room_index == 4:
+            profile.update(hp=profile["hp"]+60, rps_interval=3.4, rps_speed=285, rps_damage=12)
+        return profile
 
     def player_hearts_for_difficulty(self):
         return 5 if self.difficulty in ("easy", "medium") else 3
 
-    def blocking_available(self):
-        return self.difficulty in ("hard", "impossible")
+    @property
+    def room(self):
+        return ROOMS[self.room_index]
+
+    @property
+    def guarding(self):
+        return self.room_index in (3, 4) and self.guard_clock % 5 >= 3
+
+    def nearest_resident(self):
+        return min(enumerate(self.room.residents), key=lambda entry: self.player.distance_to(entry[1].position))
+
+    def ready_to_leave(self):
+        return all(index in self.talked for index, npc in enumerate(self.room.residents) if npc.required)
+
+    def exit_is_open(self):
+        return self.phase == "cleared" or (
+            self.phase in ("explore", "intro") and not self.room.boss and self.ready_to_leave()
+        )
 
     def difficulty_name(self, difficulty=None):
         key = difficulty or self.difficulty
@@ -213,18 +182,18 @@ class Game:
         self.audio_ok = False
         try:
             if not pygame.mixer.get_init():
-                pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+                pygame.mixer.init(frequency=RATE, size=-16, channels=2, buffer=512)
             pygame.mixer.set_num_channels(8)
             self.music_channel = pygame.mixer.Channel(0)
             self.sfx_channel = pygame.mixer.Channel(1)
-            self.music_sound = pygame.mixer.Sound(buffer=self.make_chiptune().tobytes())
-            self.fight_music_sound = pygame.mixer.Sound(buffer=self.make_chiptune(fast=True).tobytes())
-            self.death_music_sound = pygame.mixer.Sound(buffer=self.make_chiptune(sad=True).tobytes())
+            self.voice_channel = pygame.mixer.Channel(2)
+            self.music_tracks = {}
             self.victory_sound = pygame.mixer.Sound(buffer=self.make_victory_sound().tobytes())
             self.click_sound = pygame.mixer.Sound(buffer=self.make_tone((660,), .045, 5500, fade=True).tobytes())
             self.punch_sound = pygame.mixer.Sound(buffer=self.make_tone((125, 82), .12, 8500, fade=True).tobytes())
             self.hit_sound = pygame.mixer.Sound(buffer=self.make_tone((72, 108, 145), .18, 7600, fade=True).tobytes())
             self.block_sound = pygame.mixer.Sound(buffer=self.make_tone((310, 470), .09, 6500, fade=True).tobytes())
+            self.throw_sound = pygame.mixer.Sound(buffer=self.make_tone((420, 735), .08, 3400, fade=True).tobytes())
             self.audio_ok = True
             self.current_music = None
             self.set_music()
@@ -235,7 +204,7 @@ class Game:
 
     @staticmethod
     def make_tone(frequencies, duration, amplitude, fade=False):
-        rate = 22050
+        rate = RATE
         samples = array("h")
         count = int(rate * duration)
         for i in range(count):
@@ -248,7 +217,7 @@ class Game:
     @staticmethod
     def make_victory_sound():
         """Pequeno arpejo ascendente em chiptune para marcar a vitória."""
-        rate, note_duration = 22050, .14
+        rate, note_duration = RATE, .14
         notes = (523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5)
         samples = array("h")
         for i in range(int(rate*note_duration*len(notes))):
@@ -262,86 +231,42 @@ class Game:
             samples.extend((sample, sample))
         return samples
 
-    @staticmethod
-    def make_chiptune(sad=False, fast=False):
-        """Tema original em pulso/bass/chiptune com bateria simples, em loop de 4 compassos."""
-        bpm = 72 if sad else 108 if fast else 78
-        rate, beat_seconds = 22050, 60.0/bpm
-        eighth = beat_seconds / 2
-        # A variação de derrota usa a mesma paleta, em menor e com pulso mais lento.
-        if sad:
-            melody = [57,60,64,60, 57,60,65,60, 55,60,64,60, 55,59,62,59,
-                      57,60,64,67, 65,64,60,57, 53,57,60,57, 55,59,62,57]
-            roots = [45, 41, 48, 43]  # Am, F, C, G
-        elif fast:
-            melody = [72,76,79,76, 74,77,81,77, 72,76,79,84, 81,79,76,72,
-                      72,76,79,84, 83,81,79,76, 74,77,81,86, 84,81,79,72]
-            roots = [48, 45, 41, 43]  # C, Am, F, G
-        else:
-            melody = [64,67,72,67, 69,67,64,60, 62,64,67,69, 72,69,67,64,
-                      64,67,72,76, 74,72,69,67, 69,72,76,74, 72,69,67,60]
-            roots = [48, 43, 45, 41]  # C, G, Am, F
-        count = int(rate * beat_seconds * 16)
-        samples = array("h")
-        for i in range(count):
-            t = i / rate
-            beat = int(t / beat_seconds) % 16
-            eighth_index = int(t / eighth) % len(melody)
-            note = melody[eighth_index]
-            note_start = eighth_index * eighth
-            local_note = t - note_start
-            melody_freq = 440.0 * (2.0 ** ((note-69)/12.0))
-            phase = (t * melody_freq) % 1.0
-            lead_wave = 1.0 - 4.0*abs(phase-.5)
-            note_env = min(1.0, local_note/.008) * max(0.0, 1.0-local_note/(eighth*1.05))
-            melody_sample = lead_wave * note_env * (3400 if sad else 4700)
-
-            root = roots[(beat // 4) % len(roots)]
-            bass_note = root if beat % 4 in (0, 2) else root + 7
-            bass_freq = 440.0 * (2.0 ** ((bass_note-69)/12.0))
-            bass_phase = (t*bass_freq) % 1.0
-            bass_triangle = 1.0 - 4.0*abs(bass_phase-.5)
-            bass_sample = bass_triangle * (2400 if sad else 3000)
-
-            # Bumbo nos tempos fortes, caixa nos tempos 2 e 4 e chimbal nos contratempos.
-            within_beat = t % beat_seconds
-            drum = 0.0
-            if beat % 4 in (0, 2) and within_beat < .16:
-                kick_env = math.exp(-within_beat*24)
-                drum += math.sin(2*math.pi*(65+45*math.exp(-within_beat*24))*within_beat) * kick_env * (2300 if sad else 3900)
-            if not sad and beat % 4 in (1, 3) and within_beat < .12:
-                snare_env = math.exp(-within_beat*28)
-                noise = math.sin(i*1.731) * .65 + math.sin(i*.417) * .35
-                drum += (noise + .25*math.sin(2*math.pi*150*within_beat))*snare_env*1650
-            if not sad and int(t/eighth) % 2 == 1 and t % eighth < .035:
-                hat_env = math.exp(-(t%eighth)*95)
-                drum += math.sin(i*2.41)*hat_env*320
-
-            sample = max(-26000, min(26000, int(melody_sample+bass_sample+drum)))
-            samples.extend((sample, sample))
-        return samples
 
     def apply_audio(self, settings):
         if self.audio_ok:
             master = float(settings["master"])
             self.music_channel.set_volume(master * float(settings["music"]))
             self.sfx_channel.set_volume(master * float(settings["sfx"]))
+            self.voice_channel.set_volume(master * float(settings["sfx"]) * .8)
 
-    def set_music(self, sad=False, fast=False):
+    def set_music(self):
         if not self.audio_ok:
             return
-        sound = self.death_music_sound if sad else self.fight_music_sound if fast else self.music_sound
+        index = self.room.chapter if self.state == "game" or self.settings_return_to_pause else 0
+        if index not in self.music_tracks:
+            self.music_tracks[index] = pygame.mixer.Sound(buffer=theme_pcm(index))
+        sound = self.music_tracks[index]
         if self.current_music is sound and self.music_channel.get_busy():
             return
-        self.music_channel.stop()
-        self.music_channel.play(sound, loops=-1)
+        self.music_channel.play(sound, loops=-1, fade_ms=280)
         self.current_music = sound
 
     def play_sfx(self, name="click"):
         if self.audio_ok:
             sound = {"punch": self.punch_sound, "hit": self.hit_sound,
-                     "block": self.block_sound, "victory": self.victory_sound}.get(name, self.click_sound)
+                     "block": self.block_sound, "victory": self.victory_sound,
+                     "throw": self.throw_sound}.get(name, self.click_sound)
             self.sfx_channel.play(sound)
+
+    def play_dialogue_voice(self):
+        self.speech_age = 0
+        if self.audio_ok:
+            name, line = self.current_dialogue()
+            self.voice_channel.play(pygame.mixer.Sound(buffer=speech_pcm(line, name)))
+
+    def stop_dialogue_voice(self):
+        if self.audio_ok:
+            self.voice_channel.stop()
 
     def text(self, text, pos, size=22, color=WHITE, center=False):
         surf = self.font(size).render(str(text), True, color)
@@ -368,183 +293,84 @@ class Game:
             self.text(line, (rect.left, y), size, color)
             y += size + line_gap
 
-    def image_fit(self, key, rect, alpha=255):
-        img = self.images.get(key)
-        if img:
-            fitted = pygame.transform.smoothscale(img, rect.size)
-            if alpha != 255:
-                fitted.set_alpha(alpha)
-            self.canvas.blit(fitted, rect)
+    @staticmethod
+    def heading(direction):
+        if direction.y < -.45:
+            return "up"
+        if direction.y > .45:
+            return "down"
+        return "side"
 
-    def image_contain(self, key, rect):
-        img = self.images.get(key)
-        if img:
-            scale = min(rect.width / img.get_width(), rect.height / img.get_height())
-            size = (max(1, round(img.get_width()*scale)), max(1, round(img.get_height()*scale)))
-            fitted = pygame.transform.scale(img, size)
-            self.canvas.blit(fitted, fitted.get_rect(center=rect.center))
+    def place_sprite(self, name, point, scale, pose="idle", frame=0, facing="down", flip=False, hurt=False):
+        source = sprite(name, facing, pose, frame)
+        image = pygame.transform.scale_by(source, scale)
+        if flip:
+            image = pygame.transform.flip(image, True, False)
+        if hurt:
+            self.tint_damage(image)
+        self.canvas.blit(image, (round(point[0]-image.get_width()/2), round(point[1]-38*scale)))
 
-    def make_player_sprite(self, gender="boy", facing="down", step=0, action="walk"):
-        """Sprite limpo em pixel art inspirado no retrato da seleção de personagem."""
-        s = pygame.Surface((40, 64), pygame.SRCALPHA)
-        ink = (20, 18, 31)
-        hair = (19, 20, 34) if gender == "boy" else (31, 24, 43)
-        skin, red, blue = (246, 166, 99), (178, 30, 74), (48, 83, 190)
-        pants = (39, 40, 57) if gender == "boy" else (75, 56, 127)
-        shoes = (118, 121, 143) if gender == "boy" else (232, 232, 242)
-
-        # Passos alternados: braços balançam em oposição às pernas.
-        left_leg = -3 if step else 2
-        right_leg = 2 if step else -3
-        arm_swing = 2 if step else -1
-        if facing == "side":
-            pygame.draw.rect(s, ink, (8, 25+arm_swing, 8, 17))
-            pygame.draw.rect(s, red, (9, 26+arm_swing, 6, 11))
-            pygame.draw.rect(s, ink, (27, 23-arm_swing, 7, 17))
-            pygame.draw.rect(s, skin, (28, 32-arm_swing, 5, 9))
-        else:
-            pygame.draw.rect(s, ink, (4, 25+arm_swing, 8, 17))
-            pygame.draw.rect(s, red, (5, 26+arm_swing, 6, 11))
-            pygame.draw.rect(s, skin, (5, 35+arm_swing, 6, 9))
-            pygame.draw.rect(s, ink, (28, 25-arm_swing, 8, 17))
-            pygame.draw.rect(s, red, (29, 26-arm_swing, 6, 11))
-            pygame.draw.rect(s, skin, (29, 35-arm_swing, 6, 9))
-
-        # Calça e tênis; o contorno acompanha o movimento sem deixar rastros.
-        for x, offset in ((12, left_leg), (22, right_leg)):
-            pygame.draw.rect(s, ink, (x+offset, 42, 9, 16))
-            pygame.draw.rect(s, pants, (x+offset+1, 43, 7, 13))
-            pygame.draw.rect(s, ink, (x+offset-2, 55, 13, 7))
-            pygame.draw.rect(s, shoes, (x+offset-1, 56, 11, 4))
-
-        # Camiseta vinho e avental/colete azul como no modelo da seleção.
-        pygame.draw.rect(s, ink, (7, 20, 27, 26))
-        pygame.draw.rect(s, red, (8, 21, 25, 24))
-        pygame.draw.rect(s, red, (5, 27, 30, 7))
-        pygame.draw.rect(s, ink, (11, 24, 18, 22))
-        pygame.draw.rect(s, blue, (12, 25, 16, 19))
-        pygame.draw.rect(s, (31, 55, 132), (14, 30, 4, 4))
-        pygame.draw.rect(s, (248, 244, 224), (19, 25, 3, 6))
-        pygame.draw.rect(s, (232, 47, 57), (19, 30, 3, 4))
-        pygame.draw.rect(s, (235, 235, 246), (12, 40, 5, 2))
-        pygame.draw.rect(s, (235, 235, 246), (18, 42, 5, 2))
-        pygame.draw.rect(s, (235, 235, 246), (24, 40, 4, 2))
-
-        # Cabeça e cabelo; ao caminhar para cima mostramos a parte de trás.
-        if facing == "up":
-            pygame.draw.rect(s, ink, (8, 4, 24, 22))
-            pygame.draw.rect(s, hair, (10, 4, 20, 17))
-            pygame.draw.rect(s, hair, (7, 9, 26, 8))
-        else:
-            pygame.draw.rect(s, ink, (9, 4, 22, 23))
-            pygame.draw.rect(s, skin, (11, 9, 18, 16))
-            pygame.draw.rect(s, skin, (9, 14, 22, 8))
-            pygame.draw.rect(s, hair, (10, 4, 20, 9))
-            pygame.draw.rect(s, hair, (7, 8, 5, 12))
-            pygame.draw.rect(s, hair, (28, 8, 5, 12))
-            pygame.draw.rect(s, hair, (11, 2, 6, 4))
-            pygame.draw.rect(s, hair, (17, 1, 7, 5))
-            pygame.draw.rect(s, hair, (24, 3, 6, 4))
-            if facing == "side":
-                pygame.draw.rect(s, skin, (28, 15, 4, 3))
-                pygame.draw.rect(s, ink, (23, 13, 3, 3))
-                pygame.draw.rect(s, hair, (8, 8, 7, 12))
-            else:
-                pygame.draw.rect(s, ink, (14, 14, 3, 3))
-                pygame.draw.rect(s, ink, (23, 14, 3, 3))
-                pygame.draw.rect(s, (98, 43, 40), (18, 21, 5, 2))
-        if action == "punch":
-            if facing == "down":
-                pygame.draw.rect(s, ink, (17, 35, 7, 15))
-                pygame.draw.rect(s, red, (18, 36, 5, 7))
-                pygame.draw.rect(s, skin, (17, 43, 7, 7))
-            elif facing == "up":
-                pygame.draw.rect(s, ink, (17, 17, 7, 14))
-                pygame.draw.rect(s, red, (18, 23, 5, 6))
-                pygame.draw.rect(s, skin, (17, 17, 7, 7))
-            else:
-                pygame.draw.rect(s, ink, (25, 28, 14, 7))
-                pygame.draw.rect(s, red, (29, 29, 6, 5))
-                pygame.draw.rect(s, skin, (35, 28, 5, 7))
-        elif action == "hurt":
-            pygame.draw.rect(s, ink, (5, 14, 7, 12))
-            pygame.draw.rect(s, skin, (6, 13, 6, 7))
-            pygame.draw.rect(s, ink, (28, 14, 7, 12))
-            pygame.draw.rect(s, skin, (28, 13, 6, 7))
-        elif action == "block":
-            if facing == "side":
-                pygame.draw.rect(s, ink, (24, 18, 8, 17))
-                pygame.draw.rect(s, red, (25, 20, 6, 9))
-                pygame.draw.rect(s, skin, (24, 17, 8, 6))
-            else:
-                pygame.draw.rect(s, ink, (8, 18, 8, 17))
-                pygame.draw.rect(s, red, (9, 20, 6, 9))
-                pygame.draw.rect(s, skin, (8, 17, 8, 6))
-                pygame.draw.rect(s, ink, (24, 18, 8, 17))
-                pygame.draw.rect(s, red, (25, 20, 6, 9))
-                pygame.draw.rect(s, skin, (24, 17, 8, 6))
-        return s
-
-    def make_boss_sprite(self, step=0, action="walk"):
-        """Desenha um sprite original em pixel art numa tela pequena e transparente."""
-        s = pygame.Surface((48, 64), pygame.SRCALPHA)
-        outline, hair = (24, 19, 28), (49, 30, 25)
-        skin, shirt, red, pants = (235, 153, 91), (47, 62, 105), (148, 28, 43), (35, 39, 54)
-        # sapatos e pernas
-        if step:
-            pygame.draw.rect(s, outline, (5, 54, 15, 7)); pygame.draw.rect(s, outline, (30, 51, 14, 7))
-            pygame.draw.rect(s, pants, (9, 40, 10, 16)); pygame.draw.rect(s, pants, (29, 37, 10, 16))
-            pygame.draw.rect(s, (100, 105, 119), (4, 58, 17, 4)); pygame.draw.rect(s, (100, 105, 119), (29, 55, 16, 4))
-        else:
-            pygame.draw.rect(s, outline, (9, 54, 13, 7)); pygame.draw.rect(s, outline, (27, 54, 13, 7))
-            pygame.draw.rect(s, pants, (12, 39, 10, 17)); pygame.draw.rect(s, pants, (27, 39, 10, 17))
-            pygame.draw.rect(s, (100, 105, 119), (8, 58, 16, 4)); pygame.draw.rect(s, (100, 105, 119), (26, 58, 16, 4))
-        # tronco, paletó e camisa
-        pygame.draw.rect(s, outline, (8, 21, 32, 23))
-        pygame.draw.rect(s, red, (10, 22, 28, 21)); pygame.draw.rect(s, shirt, (19, 22, 10, 19))
-        pygame.draw.rect(s, (225, 194, 108), (22, 24, 3, 14))
-        # braços e punhos
-        pygame.draw.rect(s, outline, (4, 24, 8, 22)); pygame.draw.rect(s, red, (5, 25, 6, 16))
-        pygame.draw.rect(s, skin, (5, 40, 7, 8)); pygame.draw.rect(s, outline, (36, 24, 8, 22))
-        pygame.draw.rect(s, red, (37, 25, 6, 16)); pygame.draw.rect(s, skin, (37, 40, 7, 8))
-        if action == "attack":
-            pygame.draw.rect(s, outline, (31, 25, 15, 8))
-            pygame.draw.rect(s, red, (34, 26, 10, 6))
-            pygame.draw.rect(s, skin, (42, 25, 6, 8))
-        elif action == "hurt":
-            pygame.draw.rect(s, skin, (4, 33, 7, 8))
-            pygame.draw.rect(s, skin, (37, 33, 7, 8))
-        # cabeça, cabelo e expressão
-        pygame.draw.rect(s, outline, (12, 7, 24, 19)); pygame.draw.rect(s, skin, (14, 11, 20, 15))
-        pygame.draw.rect(s, hair, (11, 6, 26, 8)); pygame.draw.rect(s, hair, (9, 10, 6, 9))
-        pygame.draw.rect(s, hair, (14, 4, 6, 5)); pygame.draw.rect(s, hair, (23, 3, 7, 6))
-        pygame.draw.rect(s, hair, (32, 7, 6, 8)); pygame.draw.rect(s, outline, (17, 15, 4, 3))
-        pygame.draw.rect(s, outline, (27, 15, 4, 3)); pygame.draw.rect(s, (100, 38, 35), (21, 21, 7, 2))
-        # faixa de chefe e medalha
-        pygame.draw.rect(s, (205, 42, 45), (11, 32, 26, 4)); pygame.draw.rect(s, GOLD, (31, 27, 4, 4))
-        return s
+    @staticmethod
+    def tint_damage(image):
+        image.fill((255, 67, 79), special_flags=pygame.BLEND_RGB_MULT)
+        image.fill((90, 0, 6), special_flags=pygame.BLEND_RGB_ADD)
 
     def panel(self, rect, color=(18, 24, 52, 235), border=CYAN, radius=12):
         surf = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(self.canvas, (15, 22, 34), rect.move(5, 6), border_radius=radius)
         pygame.draw.rect(surf, color, surf.get_rect(), border_radius=radius)
         pygame.draw.rect(surf, border, surf.get_rect(), 2, border_radius=radius)
+        if rect.w > 200:
+            for index, accent in enumerate(LOGO_COLORS):
+                pygame.draw.rect(surf, accent, (10+index*12, 0, 10, 4))
         self.canvas.blit(surf, rect)
 
-    def button(self, key, label, rect, *, font=22):
+    def button(self, key, label, rect, *, font=22, accent=CYAN):
         mouse = pygame.mouse.get_pos()
         scale = pygame.Vector2(self.screen.get_size())
         mouse = (mouse[0] * W / max(scale.x, 1), mouse[1] * H / max(scale.y, 1))
         hovered = rect.collidepoint(mouse)
-        color = (48, 94, 132) if hovered else (28, 55, 88)
-        pygame.draw.rect(self.canvas, color, rect, border_radius=8)
-        pygame.draw.rect(self.canvas, GOLD if hovered else CYAN, rect, 2, border_radius=8)
+        color = tuple(round(channel*(.56 if hovered else .34)+16) for channel in accent)
+        pygame.draw.rect(self.canvas, (15, 22, 34), rect.move(0, 4))
+        pygame.draw.rect(self.canvas, color, rect)
+        pygame.draw.rect(self.canvas, WHITE if hovered else accent, rect, 2)
+        pygame.draw.rect(self.canvas, accent, (rect.left+3, rect.top+7, 3, rect.height-14))
         self.text(label, rect.center, font, WHITE, True)
         self.controls.append((key, rect))
 
-    def bg_image(self, key, overlay=0):
-        self.image_fit(key, pygame.Rect(0, 0, W, H))
+    def draw_campus(self, overlay=0):
+        self.canvas.blit(self.campus_art, (0, 0))
         if overlay:
-            pygame.draw.rect(self.canvas, (0, 0, 0, overlay), (0, 0, W, H))
+            shade = pygame.Surface((W, H), pygame.SRCALPHA)
+            shade.fill((16, 24, 43, overlay))
+            self.canvas.blit(shade, (0, 0))
+
+    @staticmethod
+    def load_ui_image(filename):
+        path = Path(__file__).resolve().parent / "assets" / "ui" / filename
+        try:
+            return pygame.image.load(str(path)).convert_alpha()
+        except (pygame.error, FileNotFoundError):
+            return None
+
+    def load_menu_art(self):
+        original = self.load_ui_image("ChatGPT Image 19 de ago. de 2026, 12_50_59.png")
+        if original is None:
+            return self.campus_art
+        return pygame.transform.scale(pygame.transform.smoothscale(original, (320, 180)), (W, H))
+
+    def load_menu_buttons(self):
+        filenames = ("sheetbotao.png", "ChatGPT Image 19 de ago. de 2026, 14_30_45.png",
+                     "ChatGPT Image 19 de ago. de 2026, 14_31_39.png")
+        sheets = tuple(self.load_ui_image(path) for path in filenames)
+        regions = (
+            ((311, 10, 925, 254), (279, 11, 1007, 248), (270, 0, 1036, 259)),
+            ((308, 268, 931, 252), (276, 266, 1003, 250), (270, 264, 1020, 254)),
+            ((314, 523, 901, 248), (275, 522, 983, 252), (272, 523, 996, 249)),
+            ((321, 780, 894, 230), (289, 779, 966, 232), (279, 775, 986, 241)),
+        )
+        return tuple(tuple(sheet.subsurface(region).copy() if sheet is not None else None
+                           for sheet, region in zip(sheets, row)) for row in regions)
 
     def read_settings(self):
         try:
@@ -562,19 +388,22 @@ class Game:
 
     def set_state(self, state):
         self.state, self.state_time = state, 0.0
+        self.set_music()
 
     def save_game(self):
-        if self.phase not in ("intro", "combat"):
-            return False
         data = {
             "name": self.name, "gender": self.gender, "player_hp": self.player_hp,
             "difficulty": self.difficulty,
             "boss_hp": self.boss_hp, "player": [self.player.x, self.player.y],
-            "boss": [self.boss.x, self.boss.y], "phase": self.phase,
-            "dialogue_step": self.dialogue_step,
+            "boss": [self.boss.x, self.boss.y],
+            "phase": {"intro": "explore", "won": "verdict"}.get(self.phase, self.phase),
+            "campaign_version": 3, "room": self.room_index, "role": self.role, "talked": sorted(self.talked),
+            "skill_timer": self.skill_timer, "paper_cooldown": self.paper_cooldown,
         }
         try:
-            self.save_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            pending = self.save_path.with_suffix(".tmp")
+            pending.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            pending.replace(self.save_path)
             self.save_settings()
             return True
         except OSError:
@@ -586,21 +415,33 @@ class Game:
             self.name = str(data.get("name", "Jogador"))
             self.gender = data.get("gender", "boy") if data.get("gender") in ("boy", "girl") else "boy"
             self.difficulty = data.get("difficulty", "easy") if data.get("difficulty") in self.DIFFICULTIES else "easy"
-            self.boss_hp_max = self.difficulty_profile()["hp"]
-            self.player_hp_max = self.player_hearts_for_difficulty()
+            room_index = data.get("room", 1)
+            if not isinstance(room_index, int) or not 0 <= room_index < len(ROOMS):
+                return False
+            role = "sprinter" if data.get("role") == "support" else data.get("role")
+            self.role = role if role in ROLES else "attack"
+            self.enter_room(room_index)
             saved_player_hp = int(data.get("player_hp", self.player_hp_max))
             # Converte saves antigos que guardavam vida de 0 a 100 para corações.
             if saved_player_hp > self.player_hp_max:
                 saved_player_hp = math.ceil(saved_player_hp / 100 * self.player_hp_max)
             self.player_hp = max(1, min(self.player_hp_max, saved_player_hp))
             self.boss_hp = max(1, min(self.boss_hp_max, int(data.get("boss_hp", self.boss_hp_max))))
-            self.player.update(*data.get("player", [640, 540]))
-            self.boss.update(*data.get("boss", [640, 160]))
-            self.phase = data.get("phase", "combat") if data.get("phase") in ("intro", "combat") else "combat"
-            self.dialogue_step = max(0, min(4, int(data.get("dialogue_step", 4))))
-            if self.phase == "intro" and self.dialogue_step >= 4:
-                self.phase = "combat"
-            self.paused = False
+            version = data.get("campaign_version")
+            current_map = version in (2, 3)
+            if current_map:
+                self.player.update(*data.get("player", [640, 540]))
+                self.boss.update(*data.get("boss", [640, 288]))
+            else:
+                self.boss.update(640, 320)
+            phase = data.get("phase")
+            self.phase = phase if self.room.boss and phase in ("combat", "cleared", "verdict") else "explore"
+            if self.phase in ("cleared", "verdict"):
+                self.boss_hp = 0
+                if self.phase == "verdict" or version != 3:
+                    self.show_verdict()
+            if current_map:
+                self.talked = {i for i in data.get("talked", []) if isinstance(i, int) and 0 <= i < len(self.room.residents)}
             self.saved_prompt = False
             self.player_action = self.boss_action = "idle"
             self.player_hurt_timer = self.boss_hurt_timer = self.impact_timer = 0.0
@@ -610,21 +451,27 @@ class Game:
             self.rps_attack_timer = 0.0
             self.projectiles.clear()
             self.paper_projectiles.clear()
-            self.paper_cooldown = 0.0
+            self.paper_cooldown = max(0.0, min(5.0, float(data.get("paper_cooldown", 0))))
+            self.skill_timer = max(0.0, min(ROLES[self.role].cooldown, float(data.get("skill_timer", 0))))
             self.player_blocking = False
             self.block_keys_down.clear()
             self.block_press_consumed = False
             self.set_state("game")
-            self.set_music(fast=self.phase == "combat")
             return True
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             return False
 
     def start_game(self):
-        self.set_music()
-        self.player.update(640, 540)
+        self.enter_room(0)
+
+    def enter_room(self, room_index):
+        self.room_index = room_index
+        self.talked.clear()
+        self.dialogue = []
+        self.speaker = None
+        self.player.update(105, self.DOORWAY.centery)
         self.boss.update(640, 160)
-        self.direction.update(0, 1)
+        self.direction.update(1, 0)
         self.player_action_direction.update(0, 1)
         self.player_moving = self.boss_moving = False
         self.walk_anim_time = self.boss_anim_time = 0.0
@@ -638,23 +485,67 @@ class Game:
         self.player_action_hit = self.boss_action_hit = False
         self.boss_direction.update(0, 1)
         self.impact_timer = 0.0
+        self.attack_flash = 0.0
         self.player_blocking = False
         self.block_keys_down.clear()
         self.block_press_consumed = False
         self.block_flash = 0.0
+        self.player_throw_time = self.boss_throw_time = 0.0
+        self.stop_dialogue_voice()
         self.rps_attack_timer = 0.0
         self.projectiles.clear()
         self.paper_projectiles.clear()
         self.paper_cooldown = 0.0
+        self.skill_timer = self.dash_time = self.guard_clock = 0.0
+        self.ally_timer = 5.0
+        self.combat_message = ""
+        self.combat_message_timer = 0.0
         self.paused = False
-        self.dialogue_step, self.phase = 0, "intro"
+        self.dialogue_step, self.phase = 0, "explore"
         self.attack_timer = self.boss_attack_timer = 0.0
         self.set_state("game")
 
+    def interact(self):
+        if self.phase != "explore":
+            return
+        index, npc = self.nearest_resident()
+        if self.player.distance_to(npc.position) <= 100:
+            self.speaker = index
+            self.dialogue = npc.lines
+            self.dialogue_step = 0
+            self.phase = "intro"
+            self.play_dialogue_voice()
+
+    def check_passage(self):
+        if self.DOORWAY.collidepoint(self.player) and self.exit_is_open():
+            if self.room_index+1 < len(ROOMS):
+                self.enter_room(self.room_index+1)
+            else:
+                self.finish_campaign()
+        elif (self.phase == "explore" and self.room.boss
+              and self.ARENA.collidepoint(self.player) and self.ready_to_leave()):
+            self.begin_combat()
+
+    def show_verdict(self):
+        self.speaker = next(index for index, npc in enumerate(self.room.residents) if npc.outfit == "rival")
+        self.dialogue = [VERDICTS[self.room_index]]
+        self.dialogue_step = 0
+        self.phase = "verdict"
+        self.play_dialogue_voice()
+
+    def finish_campaign(self):
+        try:
+            self.save_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        self.set_state("victory")
+
     def render_loading(self):
-        self.canvas.fill((10, 13, 41))
-        self.image_contain("loading_logo", pygame.Rect(390, 50, 500, 280))
-        self.text(self.tx("O JOGO", "THE GAME"), (W//2, 330), 24, CYAN, True)
+        self.draw_campus(130)
+        self.panel(pygame.Rect(305, 154, 670, 445), (21, 38, 54, 248), GOLD)
+        self.draw_game_title(640, 225)
+        for index, name in enumerate(("Levi", "Reidryan", "Bruno", "Davi", "Jaylson", "Jota")):
+            self.place_sprite(name, (445+index*78, 464), 2, "walk", int(self.progress/5+index)%4)
         if self.progress < 100:
             self.load_tick += self.state_time
             if self.load_tick > .04:
@@ -662,44 +553,41 @@ class Game:
                 self.load_tick = 0.0
         self.state_time = 0.0
         step = min(int(self.progress // 20), 4)
-        labels = ["Carregando assets", "Inicializando mundo", "Preparando personagens", "Carregando músicas", "Quase pronto"]
-        self.text("Concluído!" if self.progress >= 100 else labels[step], (W//2, 515), 20, (200, 200, 210), True)
-        pygame.draw.rect(self.canvas, (35, 40, 65), (340, 550, 600, 28), border_radius=8)
-        pygame.draw.rect(self.canvas, CYAN, (340, 550, int(600*self.progress/100), 28), border_radius=8)
+        labels = [self.tx("Preparando a escola", "Preparing the school"),
+                  self.tx("Montando os cenários", "Setting up the rooms"),
+                  self.tx("Reunindo os Atiçadores", "Gathering the team"),
+                  self.tx("Ajustando a música", "Setting up the music"),
+                  self.tx("Quase pronto", "Almost ready")]
+        self.text(self.tx("Pronto!", "Ready!") if self.progress >= 100 else labels[step], (W//2, 515), 20, WHITE, True)
+        self.draw_bar(pygame.Rect(377, 549, 526, 20), self.progress, 100, CYAN)
+
+    def draw_game_title(self, x, y):
+        shadow = self.title_font.render("ATIÇADORES", False, (9, 23, 35))
+        title = self.title_font.render("ATIÇADORES", False, GOLD)
+        self.canvas.blit(shadow, shadow.get_rect(center=(x+4, y+5)))
+        self.canvas.blit(title, title.get_rect(center=(x, y)))
+        self.text("L T D A", (x, y+55), 24, CYAN, True)
 
     def render_menu(self):
-        self.bg_image("menu_bg")
-        english = self.settings["language"] == "en"
-        if english:
-            self.text("ATICADORES LTDA", (W//2, 116), 50, GOLD, True)
-            self.text("THE GAME", (W//2, 172), 25, WHITE, True)
-        mouse = pygame.mouse.get_pos()
-        sw, sh = self.screen.get_size()
-        mouse = (mouse[0]*W/max(1, sw), mouse[1]*H/max(1, sh))
-        cursor_hand = False
-        keys = ("play", "options", "credits", "quit")
-        labels = ("PLAY", "OPTIONS", "CREDITS", "QUIT") if english else ("JOGAR", "OPÇÕES", "CRÉDITOS", "SAIR")
-        positions = ((81, 245, 330, 98), (80, 338, 330, 92), (82, 425, 330, 90), (84, 513, 330, 81))
-        for key, label, values, sprites in zip(keys, labels, positions, self.menu_buttons):
-            rect = pygame.Rect(values)
-            hovered = rect.collidepoint(mouse)
-            pressed = hovered and pygame.mouse.get_pressed()[0]
-            cursor_hand |= hovered
-            self.controls.append((key, rect))
-            if not english:
-                sprite = sprites[1] if pressed else sprites[2] if hovered else sprites[0]
-                if sprite:
-                    self.canvas.blit(pygame.transform.scale(sprite, rect.size), rect)
-                else:
-                    self.button(key, label, rect, font=22)
+        self.canvas.blit(self.menu_art, (0, 0))
+        self.panel(pygame.Rect(64, 66, 388, 544), (19, 34, 49, 225), (143, 184, 172), 4)
+        self.draw_game_title(258, 133)
+        self.text(self.tx("A resenha contra-ataca", "The school crew strikes back"), (258, 231), 19, WHITE, True)
+        labels = (("play", "JOGAR", "PLAY", LOGO_COLORS[4]), ("options", "OPÇÕES", "OPTIONS", LOGO_COLORS[1]),
+                  ("credits", "CRÉDITOS", "CREDITS", LOGO_COLORS[2]), ("quit", "SAIR", "QUIT", LOGO_COLORS[3]))
+        sx, sy = self.screen.get_size()
+        mx, my = pygame.mouse.get_pos()
+        mouse = (mx*W/max(1, sx), my*H/max(1, sy))
+        for index, (key, pt, en, accent) in enumerate(labels):
+            rect = pygame.Rect(85, 257+index*86, 346, 88)
+            over = rect.collidepoint(mouse) and not (self.credits or self.saved_prompt)
+            state = 2 if over and pygame.mouse.get_pressed()[0] else int(over)
+            art = self.menu_buttons[index][state]
+            if self.settings["language"] == "pt_BR" and art is not None:
+                self.canvas.blit(pygame.transform.scale(art, rect.size), rect)
+                self.controls.append((key, rect))
             else:
-                color = (48, 94, 132) if hovered else (28, 55, 88)
-                pygame.draw.rect(self.canvas, color, rect, border_radius=8)
-                pygame.draw.rect(self.canvas, GOLD if hovered else CYAN, rect, 2, border_radius=8)
-                self.text(label, rect.center, 22, WHITE, True)
-        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND if cursor_hand else pygame.SYSTEM_CURSOR_ARROW)
-        if not english:
-            self.text("Versão Beta", (32, 685), 14, (170, 170, 180))
+                self.button(key, self.tx(pt, en), rect.inflate(-8, -16), font=24, accent=accent)
         if self.credits:
             self.panel(pygame.Rect(355, 190, 570, 340), (12, 18, 42, 250), GOLD)
             self.text(self.tx("CRÉDITOS", "CREDITS"), (640, 233), 32, GOLD, True)
@@ -715,9 +603,9 @@ class Game:
             self.button("cancel_saved", self.tx("CANCELAR", "CANCEL"), pygame.Rect(735, 365, 150, 52), font=18)
 
     def render_character(self):
-        self.bg_image("select_bg", 145)
-        self.button("back", "← VOLTAR", pygame.Rect(18, 18, 145, 46), font=18)
-        self.panel(pygame.Rect(250, 80, 780, 570), (14, 20, 47, 235))
+        self.draw_campus(118)
+        self.button("back", self.tx("← VOLTAR", "← BACK"), pygame.Rect(18, 18, 145, 46), font=18)
+        self.panel(pygame.Rect(250, 66, 780, 624), (14, 20, 47, 235))
         self.text(self.tx("ESCOLHA SEU PERSONAGEM", "CHOOSE YOUR CHARACTER"), (640, 125), 30, GOLD, True)
         self.text(self.tx("Qual o nome do jogador?", "Player name?"), (410, 200), 20, WHITE)
         field = pygame.Rect(660, 190, 260, 44)
@@ -731,7 +619,10 @@ class Game:
         self.button("prev_char", "<", pygame.Rect(390, 325, 60, 58), font=28)
         self.button("next_char", ">", pygame.Rect(830, 325, 60, 58), font=28)
         gender = "boy" if self.char_index == 0 else "girl"
-        self.image_fit(gender, pygame.Rect(570, 260, 140, 180))
+        self.panel(pygame.Rect(545, 263, 190, 171), (36, 67, 84, 255), (111, 184, 169), 4)
+        pygame.draw.ellipse(self.canvas, (22, 41, 59), (601, 412, 78, 14))
+        pose = "wave" if self.state_time%3.8 < .38 else "idle"
+        self.place_sprite(gender, (640, 420), 4, pose)
         self.text(self.tx("Masculino", "Male") if self.char_index == 0 else self.tx("Feminino", "Female"), (640, 455), 22, CYAN, True)
         self.text(self.tx("ESCOLHA A DIFICULDADE", "CHOOSE DIFFICULTY"), (640, 488), 17, GOLD, True)
         mouse = pygame.mouse.get_pos()
@@ -746,13 +637,18 @@ class Game:
             pygame.draw.rect(self.canvas, GOLD if selected else CYAN, rect, 2, border_radius=8)
             self.text(self.difficulty_name(level), rect.center, 15, WHITE, True)
             self.controls.append(("difficulty_"+level, rect))
-        if self.difficulty in ("hard", "impossible"):
-            self.text(self.tx("No Difícil e Impossível: segure C ou Shift; cada bloqueio segura 1 ataque", "On Hard and Impossible: hold C or Shift; each block stops 1 attack"), (640, 563), 13, (180, 220, 240), True)
-        self.button("confirm", self.tx("COMEÇAR", "START"), pygame.Rect(560, 590, 160, 48), font=22)
+        for index, (key, role) in enumerate(ROLES.items()):
+            rect = pygame.Rect(355+index*195, 563, 180, 36)
+            self.button("role_"+key, self.tx(*role.title), rect, font=17, accent=role.color)
+            if key == self.role:
+                pygame.draw.rect(self.canvas, role.color, rect, 3, border_radius=8)
+        self.text(self.tx(*ROLES[self.role].description), (640, 616), 16, ROLES[self.role].color, True)
+        self.button("confirm", self.tx("COMEÇAR", "START"), pygame.Rect(560, 638, 160, 40),
+                    font=20, accent=LOGO_COLORS[0])
 
     def render_settings(self):
         values = self.settings_draft
-        self.canvas.fill((10, 15, 49))
+        self.draw_campus(150)
         self.panel(pygame.Rect(210, 38, 860, 644), (22, 29, 62, 255))
         self.text(self.tx("CONFIGURAÇÕES", "SETTINGS"), (640, 78), 30, GOLD, True)
         self.text(self.tx("TELA", "DISPLAY"), (300, 130), 20, CYAN)
@@ -766,12 +662,16 @@ class Game:
         self.text(self.tx("IDIOMA", "LANGUAGE"), (740, 130), 20, CYAN)
         self.button("language", "Português (Brasil)" if values["language"] == "pt_BR" else "English", pygame.Rect(740, 163, 270, 42), font=17)
         self.text(self.tx("DADOS SALVOS", "SAVED DATA"), (740, 245), 20, CYAN)
-        self.button("clear_save", self.tx("EXCLUIR DADOS SALVOS", "CLEAR SAVED SETTINGS"), pygame.Rect(740, 280, 270, 45), font=16)
+        self.button("clear_save", self.tx("EXCLUIR DADOS SALVOS", "CLEAR SAVED SETTINGS"),
+                    pygame.Rect(740, 280, 270, 45), font=16, accent=LOGO_COLORS[3])
+        if self.school_logo is not None:
+            self.canvas.blit(pygame.transform.scale(self.school_logo, (144, 144)), (804, 405))
         if self.feedback:
             self.text(self.feedback, (740, 350), 16, (100, 240, 150))
         cancel_label = self.tx("VOLTAR À PAUSA", "BACK TO PAUSE") if self.settings_return_to_pause else self.tx("CANCELAR", "CANCEL")
         self.button("cancel_settings", cancel_label, pygame.Rect(710, 600, 155, 46), font=17)
-        self.button("save_settings", self.tx("SALVAR", "SAVE"), pygame.Rect(880, 600, 130, 46), font=17)
+        self.button("save_settings", self.tx("SALVAR", "SAVE"), pygame.Rect(880, 600, 130, 46),
+                    font=17, accent=LOGO_COLORS[2])
 
     def render_pause(self):
         shade = pygame.Surface((W, H), pygame.SRCALPHA)
@@ -779,9 +679,11 @@ class Game:
         self.canvas.blit(shade, (0, 0))
         self.panel(pygame.Rect(390, 170, 500, 390), (15, 22, 48, 250), GOLD)
         self.text(self.tx("PAUSADO", "PAUSED"), (640, 225), 36, GOLD, True)
-        self.button("pause_resume", self.tx("RETORNAR AO JOGO", "RESUME GAME"), pygame.Rect(505, 290, 270, 55), font=20)
+        self.button("pause_resume", self.tx("RETORNAR AO JOGO", "RESUME GAME"),
+                    pygame.Rect(505, 290, 270, 55), font=20, accent=LOGO_COLORS[2])
         self.button("pause_settings", self.tx("CONFIGURAÇÕES", "SETTINGS"), pygame.Rect(505, 370, 270, 55), font=20)
-        self.button("pause_save_exit", self.tx("SALVAR E SAIR", "SAVE AND EXIT"), pygame.Rect(505, 450, 270, 55), font=20)
+        self.button("pause_save_exit", self.tx("SALVAR E SAIR", "SAVE AND EXIT"),
+                    pygame.Rect(505, 450, 270, 55), font=20, accent=LOGO_COLORS[4])
         if self.feedback:
             self.text(self.feedback, (640, 525), 16, (255, 130, 130), True)
 
@@ -795,100 +697,153 @@ class Game:
         self.text(f"{round(val*100)}", (730, y-1), 17)
         self.controls.append(("slider_"+key, track.inflate(0, 24)))
 
-    def draw_classroom_desk(self, x, y):
-        # Carteira escolar em vista superior estilizada, com cadeira, pés e caderno.
-        pygame.draw.ellipse(self.canvas, (68, 47, 34), (x-2, y+38, 112, 30))
-        pygame.draw.rect(self.canvas, (81, 57, 39), (x+31, y+42, 48, 25))
-        pygame.draw.rect(self.canvas, (37, 34, 34), (x+35, y+45, 6, 20))
-        pygame.draw.rect(self.canvas, (37, 34, 34), (x+69, y+45, 6, 20))
-        pygame.draw.rect(self.canvas, (50, 35, 26), (x, y, 108, 50))
-        pygame.draw.rect(self.canvas, (152, 103, 57), (x+3, y+3, 102, 43))
-        pygame.draw.rect(self.canvas, (181, 131, 78), (x+6, y+6, 96, 34))
-        pygame.draw.line(self.canvas, (205, 159, 101), (x+8, y+8), (x+98, y+8), 2)
-        pygame.draw.rect(self.canvas, (226, 220, 195), (x+36, y+12, 30, 20))
-        pygame.draw.rect(self.canvas, (105, 91, 72), (x+36, y+12, 30, 20), 2)
-        pygame.draw.line(self.canvas, (164, 151, 129), (x+41, y+18), (x+59, y+18), 1)
-        pygame.draw.line(self.canvas, (164, 151, 129), (x+41, y+23), (x+57, y+23), 1)
-
-    def draw_battle_room(self):
-        self.canvas.fill((125, 91, 58))
-        # Madeira em tábuas com veios e emendas alternadas.
-        plank_h = 34
-        for row, y in enumerate(range(96, H-38, plank_h)):
-            shade = (145, 101, 62) if row % 2 == 0 else (133, 91, 56)
-            pygame.draw.rect(self.canvas, shade, (36, y, W-72, plank_h))
-            pygame.draw.line(self.canvas, (91, 62, 43), (36, y), (W-36, y), 2)
-            seam_offset = 115 if row % 2 else 0
-            for seam_x in range(36+seam_offset, W-36, 230):
-                pygame.draw.line(self.canvas, (100, 68, 46), (seam_x, y+2), (seam_x, min(y+plank_h-2, H-38)), 2)
-            for grain in range(5):
-                gx = 55 + ((row*173 + grain*239) % (W-110))
-                gy = y + 7 + (grain*11 % 20)
-                pygame.draw.line(self.canvas, (159, 115, 71), (gx, gy), (min(gx+18+(grain%4)*6, W-40), gy), 1)
-        # Paredes pintadas, painéis e rodapé de madeira.
-        pygame.draw.rect(self.canvas, (57, 76, 69), (0, 0, W, 96))
-        pygame.draw.rect(self.canvas, (68, 91, 79), (0, 0, W, 77))
-        door_y, door_h = 322, 150
-        pygame.draw.rect(self.canvas, (48, 62, 58), (0, 0, 36, H))
-        pygame.draw.rect(self.canvas, (48, 62, 58), (W-36, 0, 36, H))
-        pygame.draw.rect(self.canvas, (54, 43, 35), (0, H-38, W, 38))
-        for x in range(48, W-40, 112):
-            pygame.draw.rect(self.canvas, (78, 103, 89), (x, 17, 88, 57))
-            pygame.draw.line(self.canvas, (91, 118, 99), (x+7, 25), (x+79, 25), 2)
-            pygame.draw.line(self.canvas, (53, 73, 66), (x+4, 70), (x+84, 70), 2)
-        pygame.draw.rect(self.canvas, (35, 29, 27), (0, 88, W, 11))
-        pygame.draw.rect(self.canvas, (115, 75, 45), (0, 92, W, 7))
-        pygame.draw.rect(self.canvas, (106, 69, 43), (0, H-48, W, 10))
-
-        # Porta fechada vista de cima, encaixada no vão da parede esquerda.
-        pygame.draw.rect(self.canvas, (31, 25, 23), (0, door_y-4, 47, door_h+8))
-        pygame.draw.rect(self.canvas, (113, 68, 42), (2, door_y, 42, door_h))
-        pygame.draw.rect(self.canvas, (151, 91, 52), (6, door_y+4, 34, door_h-8))
-        pygame.draw.line(self.canvas, (181, 116, 69), (10, door_y+8), (10, door_y+door_h-8), 2)
-        pygame.draw.line(self.canvas, (91, 53, 36), (36, door_y+8), (36, door_y+door_h-8), 2)
-        pygame.draw.rect(self.canvas, (89, 53, 36), (11, door_y+16, 23, 48), 2)
-        pygame.draw.rect(self.canvas, (89, 53, 36), (11, door_y+86, 23, 48), 2)
-        pygame.draw.rect(self.canvas, (207, 173, 101), (39, door_y+door_h//2-3, 4, 7))
-        pygame.draw.rect(self.canvas, (67, 44, 33), (2, door_y+25, 4, 8))
-        pygame.draw.rect(self.canvas, (67, 44, 33), (2, door_y+door_h-33, 4, 8))
-
-        # Carteiras nas laterais e no fundo, preservando o espaço central da luta.
-        for x, y in self.CLASSROOM_DESKS:
-            self.draw_classroom_desk(x, y)
 
     def move_with_room_collision(self, position, movement, radius=12):
-        """Move an actor around chairs and the professor while allowing it to slide."""
-        obstacles = [pygame.Rect(x+31, y+42, 48, 25) for x, y in self.CLASSROOM_DESKS]
-        obstacles.append(pygame.Rect(278, 321, 56, 37))
+        """Move an actor along each axis so it can slide around furniture."""
+        obstacles = self.room_obstacles[self.room_index]
+        if self.room_index == 0:
+            obstacles = [pygame.Rect(x+31, y+42, 48, 25) for x, y in CLASSROOM_DESKS]
         for axis in ("x", "y"):
             candidate = position.copy()
             setattr(candidate, axis, getattr(candidate, axis)+getattr(movement, axis))
-            candidate.x = max(48, min(W-48, candidate.x))
-            candidate.y = max(76, min(H-58, candidate.y))
+            at_open_door = (
+                self.exit_is_open() and self.DOORWAY.top+radius <= candidate.y < self.DOORWAY.bottom-radius
+            )
+            right_edge = W-25 if at_open_door else self.DOORWAY.left-radius
+            candidate.x = max(48, min(right_edge, candidate.x))
+            candidate.y = max(250 if self.room_index == 3 else 230 if self.room_index else 110, min(H-58, candidate.y))
             feet_box = pygame.Rect(round(candidate.x-radius), round(candidate.y-radius),
                                    radius*2, radius*2)
             if not any(feet_box.colliderect(obstacle) for obstacle in obstacles):
                 setattr(position, axis, getattr(candidate, axis))
 
     def render_game(self):
-        self.draw_battle_room()
-        pygame.draw.rect(self.canvas, (26, 77, 39), (340, 8, 600, 56))
-        self.text(self.tx("Sala da Batalha", "Battle Room"), (640, 35), 18, (220, 255, 220), True)
+        self.canvas.blit(self.maps[self.room_index], (0, 0))
+        if self.room_index in (0, 5):
+            color = (212, 173, 116) if self.room_index == 0 else (225, 215, 161)
+            for i in range(14):
+                x = 72+(i*147+round(self.state_time*(6+i%4)))%1136
+                y = 261+(i*87+round(6*math.sin(self.state_time+i)))%352
+                pygame.draw.rect(self.canvas, color, (x, y, 3, 2))
+        pygame.draw.rect(self.canvas, (21, 26, 44), (340, 6, 600, 66))
+        self.text(f"{self.room.chapter:02d}  •  {self.tx(*CHAPTERS[self.room.chapter-1])}", (640, 22), 16, CYAN, True)
+        self.text(self.tx(*self.room.name), (640, 48), 24, WHITE, True)
+        pygame.draw.rect(self.canvas, self.room.color, (36, 95, W-72, 18))
+        self.draw_school_details()
+        exploring = self.phase in ("explore", "intro", "cleared")
+        self.draw_doorways()
+        if self.phase == "explore" and self.room.boss and self.ready_to_leave():
+            pygame.draw.rect(self.canvas, GOLD, self.ARENA, 2, border_radius=8)
         self.draw_projectiles()
-        self.draw_person(self.boss, "boss")
-        self.draw_person(self.player, "player")
-        # professor guide
-        self.image_fit("professor", pygame.Rect(275, 275, 62, 82))
-        self.text("Professor", (306, 260), 14, GOLD, True)
-        self.text(f"{self.tx('Chefão', 'Boss')}  {self.boss_hp} / {self.boss_hp_max}", (640, 77), 15, (255, 130, 130), True)
-        self.draw_bar(pygame.Rect(390, 88, 500, 22), self.boss_hp, self.boss_hp_max, (205, 55, 55))
+        actors = [(self.player.y, "player", None)]
+        if not exploring and self.room.boss:
+            actors.append((self.boss.y, "boss", None))
+            title = self.tx(*self.room.boss)
+            if self.phase == "combat" and self.guarding:
+                title += self.tx("  •  Guarda", "  •  Guard")
+            self.text(f"{title}   {self.boss_hp}/{self.boss_hp_max}", (640, 84), 15, (255, 170, 170), True)
+            self.draw_bar(pygame.Rect(390, 98, 500, 12), self.boss_hp, self.boss_hp_max, (205, 55, 55))
+        for index, npc in enumerate(self.room.residents):
+            if exploring or npc.outfit != "rival":
+                actors.append((npc.position[1], "npc", index))
+        for _, kind, index in sorted(actors, key=lambda actor: actor[0]):
+            if kind == "npc":
+                self.draw_resident(index)
+            else:
+                self.draw_person(self.player if kind == "player" else self.boss, kind)
+        if self.phase == "combat":
+            self.draw_team_status()
         self.text(f"{self.tx('Dificuldade', 'Difficulty')}: {self.difficulty_name()}", (120, 78), 14, GOLD, True)
-        self.text(self.name, (640, 634), 14, CYAN, True)
+        goal = self.tx("Recuperar a resenha", "Bring back the good times")
+        if self.room_index == len(ROOMS)-1:
+            goal = self.tx("A resenha voltou!", "The good times are back!")
+        self.text(goal, (1100, 78), 17, GOLD, True)
+        role = ROLES[self.role]
+        pygame.draw.rect(self.canvas, (25, 35, 51), (0, 679, W, 41))
+        for i, accent in enumerate(LOGO_COLORS):
+            pygame.draw.rect(self.canvas, accent, (i*(W//5), 679, W//5, 3))
+        self.text(f"{self.name}  ·  {self.tx(*role.title)}", (640, 634), 16, role.color, True)
         self.draw_player_hearts()
-        if self.phase == "intro":
+        if self.phase in ("explore", "cleared"):
+            _, npc = self.nearest_resident()
+            if self.exit_is_open():
+                hint = self.tx("Atravesse a porta aberta à direita.", "Walk through the open door on the right.")
+            elif self.room.boss and self.ready_to_leave():
+                hint = self.tx("Entre na área marcada para começar o desafio.", "Walk into the marked area to start the challenge.")
+            elif self.player.distance_to(npc.position) <= 100:
+                hint = self.tx("E  ·  Conversar com ", "E  ·  Talk to ") + self.tx(*npc.name).split(" • ")[0]
+            else:
+                hint = self.tx("WASD / setas para andar  •  Fale com quem tem !", "WASD / arrows to move  •  Talk to characters marked !")
+            if self.role == "sprinter":
+                status = f" ({math.ceil(self.skill_timer)}s)" if self.skill_timer > 0 else ""
+                hint += f"   |   Q · Dash{status}"
+            self.text(hint, (640, 693), 17, WHITE, True)
+        elif self.phase == "combat":
+            status = f"{math.ceil(self.skill_timer)}s" if self.skill_timer > 0 else self.tx("pronto", "ready")
+            hint = self.tx("Espaço/Z · Soco   |   Mouse · Papel   |   C/Shift · Defesa",
+                           "Space/Z · Punch   |   Mouse · Paper   |   C/Shift · Block")
+            self.text(f"{hint}   |   Q · {self.tx(*role.skill)} ({status})", (640, 693), 17, WHITE, True)
+            if self.combat_message_timer > 0:
+                self.text(self.combat_message, (640, 605), 18, role.color, True)
+        if self.phase in ("intro", "verdict"):
             self.draw_dialogue()
         if self.phase == "lost":
             self.render_death_popup()
+
+    def draw_doorways(self):
+        y = self.DOORWAY.top
+        opened = self.exit_is_open()
+        frame = (36, 28, 44)
+        pygame.draw.rect(self.canvas, frame, (0, y-5, 45, 98))
+        pygame.draw.rect(self.canvas, (40, 73, 85), (0, y, 38, 88))
+        pygame.draw.rect(self.canvas, (115, 197, 179), (0, y+69, 38, 16))
+        pygame.draw.rect(self.canvas, frame, (1210, y-5, 70, 98))
+        if opened:
+            pygame.draw.rect(self.canvas, (40, 73, 85), (1217, y, 63, 88))
+            pygame.draw.polygon(self.canvas, (115, 197, 179), ((1217, y+67), (1280, y+67),
+                                                               (1280, y+88), (1217, y+88)))
+            pygame.draw.lines(self.canvas, WHITE, False, ((1244, y+31), (1255, y+43), (1244, y+55)), 3)
+        else:
+            pygame.draw.rect(self.canvas, (113, 74, 79), (1217, y, 55, 88))
+            pygame.draw.rect(self.canvas, (158, 104, 102), (1222, y+5, 45, 73), 2)
+            pygame.draw.circle(self.canvas, GOLD, (1229, y+46), 4)
+        if self.room_index+1 < len(ROOMS):
+            label = self.tx(*ROOMS[self.room_index+1].name)
+        else:
+            label = self.tx("Fim do intervalo", "End of break")
+        self.text(label, (1183, y-19), 15, CYAN if opened else WHITE, True)
+
+    def draw_team_status(self):
+        self.panel(pygame.Rect(50, 545, 255, 54), (20, 26, 42, 240), CYAN, 6)
+        self.text(self.tx("Cobertura de Davi e Jaylson", "Davi and Jaylson's cover"), (177, 564), 16, CYAN, True)
+        self.draw_bar(pygame.Rect(73, 583, 209, 6), self.ally_timer, 6, CYAN)
+
+    def draw_school_details(self):
+        labels = (("Mural de avisos", "Notice board"), ("Armários", "Lockers"),
+                  ("Balcão de refeições", "Lunch counter"), ("Palco", "Stage"),
+                  ("Quadro de horários", "Schedule board"), ("Pátio das turmas", "School courtyard"))
+        self.panel(pygame.Rect(955, 114, 260, 34), (24, 30, 45, 245), self.room.color, 4)
+        self.text(self.tx(*labels[self.room_index]), (1085, 131), 16, WHITE, True)
+
+    def draw_resident(self, index):
+        npc = self.room.residents[index]
+        name = npc.name[0].split(" • ")[0]
+        x, y = npc.position
+        pending = (self.phase in ("explore", "intro") and npc.required
+                   and index not in self.talked and index != self.speaker)
+        cycle = (self.state_time+index*.27) % 2.8
+        lift = round(5*math.sin(cycle*math.pi/.6)) if pending and cycle < .6 else 0
+        pygame.draw.ellipse(self.canvas, (51, 51, 60), (x-18, y-5, 36, 10))
+        speaking = index == self.speaker and self.speech_age < 2.4 and int(self.speech_age*12)%2 == 0
+        pose = "talk" if speaking else "wave" if pending and cycle < .6 else "blink" if cycle > 2.64 else "idle"
+        self.place_sprite(name, (x, y-lift), 2, pose)
+        self.text(self.tx(*npc.name), (x+1, y-86-lift), 16, (24, 28, 40), True)
+        self.text(self.tx(*npc.name), (x, y-88-lift), 16, WHITE, True)
+        if pending:
+            bubble = pygame.Rect(x-11, y-123-lift, 22, 21)
+            pygame.draw.rect(self.canvas, (32, 45, 61), bubble, border_radius=3)
+            pygame.draw.rect(self.canvas, GOLD, bubble, 2, border_radius=3)
+            self.text("!", bubble.center, 16, GOLD, True)
 
     def render_death_popup(self):
         progress = min(1.0, max(0.0, self.state_time/.45))
@@ -900,7 +855,7 @@ class Game:
         panel_rect = pygame.Rect(0, 0, panel_w, panel_h)
         panel_rect.center = (W//2, int(350 + 24*(1-progress)))
         self.panel(panel_rect, (34, 18, 28, int(250*progress)), (255, 105, 105), 16)
-        self.text(self.tx("VOCÊ MORREU!", "YOU DIED!"), (640, panel_rect.y+72), 40, (255, 105, 105), True)
+        self.text(self.tx("FIM DA RODADA", "ROUND LOST"), (640, panel_rect.y+72), 40, (255, 105, 105), True)
         self.text(self.tx("A batalha foi perdida.", "The battle is over."), (640, panel_rect.y+125), 20, (225, 220, 220), True)
         if progress >= .65:
             button_y = panel_rect.y + 177
@@ -909,97 +864,81 @@ class Game:
 
     def draw_person(self, pos, kind):
         x, y = round(pos.x), round(pos.y)
+        pygame.draw.ellipse(self.canvas, (48, 45, 55), (x-23, y-5, 46, 11))
         if kind == "boss":
-            index = int(self.boss_action_time*7) % 2 if self.boss_action in ("attack", "hurt") else int(self.boss_anim_time*3.5) % 2 if self.boss_moving else 0
-            if self.boss_action == "attack": source = self.boss_attack_sprites[index]
-            elif self.boss_action == "hurt": source = self.boss_hurt_sprites[index]
-            else: source = self.boss_sprites[index]
-            sprite = pygame.transform.scale(source, (84, 112))
-            if self.boss_direction.x < -.25:
-                sprite = pygame.transform.flip(sprite, True, False)
-            if self.boss_action == "hurt" or self.attack_flash > 0:
-                sprite.fill((95, 25, 25, 0), special_flags=pygame.BLEND_RGBA_ADD)
-            self.canvas.blit(sprite, (x-42, y-96))
-            self.text("!! "+self.tx("CHEFÃO", "BOSS")+" !!", (x, y-103), 15, (255, 90, 90), True)
-            if self.impact_timer > 0 and pos.distance_to(self.impact_position) < 1:
-                self.draw_impact(x, y-45)
+            name = self.BOSS_STYLES[self.room_index-1]
+            scale = 2 if name == "Bia" else 3
+            facing = self.heading(self.boss_direction)
+            if self.boss_action == "attack":
+                pose, frame = "punch", int(self.boss_action_time >= .25)
+            elif self.boss_action == "hurt":
+                pose, frame = "hurt", 0
+            elif self.boss_throw_time > 0:
+                pose, frame = "throw", int(self.boss_throw_time < .16)
+            else:
+                pose = "walk" if self.boss_moving else "idle"
+                frame = int(self.boss_anim_time*7)%4
+            recoil = round(7*self.boss_hurt_timer/.30)
+            self.place_sprite(name, (x-self.boss_direction.x*recoil, y-recoil//2),
+                              scale, pose, frame, facing, facing == "side" and self.boss_direction.x < 0,
+                              hurt=self.attack_flash > 0 or self.boss_hurt_timer > .12)
+            if self.phase == "combat" and self.boss_action == "attack" and not self.boss_action_hit:
+                self.text("!", (x, y-scale*39-12), 25, GOLD, True)
+            elif self.phase == "combat" and self.guarding:
+                pygame.draw.ellipse(self.canvas, (173, 219, 224), (x-37, y-91, 74, 92), 2)
         else:
+            throwing = self.player_throw_time > 0 and self.player_action != "hurt"
+            direction = self.direction
+            if self.player_action == "punch":
+                direction = self.player_action_direction
+            if throwing:
+                direction = self.throw_direction
+            facing = self.heading(direction)
+            flip = facing == "side" and direction.x < 0
             if self.phase == "lost":
-                facing = "up" if self.direction.y < -.45 else "down" if self.direction.y > .45 else "side"
-                fallen = pygame.transform.scale(self.player_hurt_frames[self.gender][facing], (60, 96))
-                fallen.fill((120, 25, 30, 0), special_flags=pygame.BLEND_RGBA_ADD)
-                angle = min(90, self.state_time*180)
-                fallen = pygame.transform.rotate(fallen, angle)
-                self.canvas.blit(fallen, fallen.get_rect(center=(x, y-40)))
+                fallen = pygame.transform.scale_by(sprite(self.gender, facing, "hurt"), 2)
+                if self.state_time < .22:
+                    self.tint_damage(fallen)
+                fallen = pygame.transform.rotate(fallen, min(90, self.state_time*180))
+                self.canvas.blit(fallen, fallen.get_rect(center=(x, y-20)))
                 return
-            animations = self.player_frames.get(self.gender, {})
-            facing_direction = self.player_action_direction if self.player_action == "punch" else self.direction
-            if facing_direction.y < -.45:
-                facing, key = "up", "walk_up" if self.player_moving else "idle_up"
-            elif facing_direction.y > .45:
-                facing, key = "down", "walk_down" if self.player_moving else "idle_down"
-            elif facing_direction.x < 0:
-                facing, key = "side", "walk_left" if self.player_moving else "idle_side"
+            if self.dash_time > 0:
+                for index in (3, 2, 1):
+                    tx, ty = pos-self.dash_direction*(index*16)
+                    pygame.draw.rect(self.canvas, (87+index*19, 183, 188), (tx-13, ty-7, 26, 3))
+                pose, frame = "dash", 0
+            elif self.player_blocking or self.block_flash > 0:
+                pose, frame = "block", int(self.block_flash > .10)
+            elif throwing:
+                pose, frame = "throw", int(self.player_throw_time < .17)
+            elif self.player_action in ("punch", "hurt"):
+                pose, frame = self.player_action, int(self.player_action_time >= .13)
             else:
-                facing, key = "side", "walk_right" if self.player_moving else "idle_side"
-            frames = animations.get(key, [])
-            if not frames and not self.player_moving:
-                frames = animations.get("idle_down", [])
-            if self.player_blocking:
-                frame = self.player_block_frames[self.gender][facing]
-            elif self.player_action == "punch":
-                punch_frames = self.player_punch_frames[self.gender][facing]
-                frame = punch_frames[min(1, int(self.player_action_time*8))]
-            elif self.player_action == "hurt":
-                frame = self.player_hurt_frames[self.gender][facing]
-            elif frames:
-                frame_index = int(self.walk_anim_time*4) % len(frames) if self.player_moving else 0
-                frame = frames[frame_index]
-            else:
-                frame = None
-            if frame:
-                sprite = pygame.transform.scale(frame, (60, 96))
-                if self.player_action == "punch" and facing == "side" and self.player_action_direction.x < 0:
-                    sprite = pygame.transform.flip(sprite, True, False)
-                if self.player_blocking and facing == "side" and self.direction.x < 0:
-                    sprite = pygame.transform.flip(sprite, True, False)
-                if self.player_action == "hurt":
-                    sprite.fill((100, 20, 25, 0), special_flags=pygame.BLEND_RGBA_ADD)
-                self.canvas.blit(sprite, (x-30, y-88))
-                if self.player_blocking or self.block_flash > 0:
-                    pygame.draw.ellipse(self.canvas, (95, 205, 255), (x-39, y-89, 78, 98), 3)
-            else:
-                pygame.draw.rect(self.canvas, (55, 105, 205), (x-14, y-22, 28, 36), border_radius=4)
-                pygame.draw.rect(self.canvas, (240, 205, 160), (x-11, y-38, 22, 16), border_radius=6)
-            self.text(self.name, (x, y-98), 14, CYAN, True)
-            if self.impact_timer > 0 and pos.distance_to(self.impact_position) < 1:
-                self.draw_impact(x, y-43)
+                pose = "walk" if self.player_moving else "blink" if self.state_time%4 > 3.84 else "idle"
+                frame = int(self.walk_anim_time*9)%4
+            recoil = round(8*self.player_hurt_timer/.34)
+            self.place_sprite(self.gender, (x+recoil*(1 if flip else -1), y-recoil//2),
+                              2, pose, frame, facing, flip, hurt=self.player_hurt_timer > .12)
+            if self.player_blocking or self.block_flash > 0:
+                pygame.draw.arc(self.canvas, CYAN, (x-37, y-75, 74, 78), -.42, 3.58, 3)
+            self.text(self.name, (x, y-87), 14, WHITE, True)
+        if self.impact_timer > 0 and pos.distance_to(self.impact_position) < 1:
+            self.draw_impact(x, y-45, kind == "player" and self.block_flash > 0)
 
     def draw_projectiles(self):
-        for shot in self.projectiles:
-            x, y = round(shot["pos"].x), round(shot["pos"].y)
-            kind = shot["kind"]
-            if kind == "rock":
-                pygame.draw.polygon(self.canvas, (117, 119, 126), [(x-13,y-4),(x-8,y-13),(x+5,y-14),(x+14,y-3),(x+10,y+10),(x-6,y+12),(x-14,y+4)])
-                pygame.draw.polygon(self.canvas, (170, 173, 179), [(x-8,y-6),(x-4,y-10),(x+4,y-10),(x+7,y-4)])
-            elif kind == "paper":
-                pygame.draw.rect(self.canvas, (245, 239, 214), (x-12,y-14,24,28), border_radius=2)
-                pygame.draw.rect(self.canvas, (190, 180, 151), (x-12,y-14,24,28), 2, border_radius=2)
-                pygame.draw.line(self.canvas, (195,187,164), (x-7,y-5), (x+7,y-5), 2)
-                pygame.draw.line(self.canvas, (195,187,164), (x-7,y+1), (x+7,y+1), 2)
-            else:
-                pygame.draw.line(self.canvas, (205, 218, 228), (x-11,y+10), (x+10,y-11), 5)
-                pygame.draw.line(self.canvas, (218, 90, 92), (x-10,y-11), (x+11,y+10), 5)
-                pygame.draw.circle(self.canvas, GOLD, (x,y), 4)
-        for shot in self.paper_projectiles:
-            x, y = round(shot["pos"].x), round(shot["pos"].y)
-            pygame.draw.rect(self.canvas, (193, 181, 151), (x-9, y-6, 18, 12))
-            pygame.draw.rect(self.canvas, (250, 246, 222), (x-6, y-9, 12, 18))
-            pygame.draw.rect(self.canvas, (255, 255, 239), (x-3, y-6, 6, 12))
-            pygame.draw.rect(self.canvas, (212, 203, 179), (x, y-3, 6, 6))
+        for shots, default in ((self.projectiles, "paper"), (self.paper_projectiles, "ball")):
+            for shot in shots:
+                center = shot["pos"]
+                direction = shot["velocity"].normalize() if shot["velocity"] else pygame.Vector2()
+                for i in range(1, 4):
+                    streak = center-direction*(i*7)
+                    pygame.draw.rect(self.canvas, (238, 217, 167), (streak.x-2, streak.y-1, 4, 2))
+                image = projectile(shot.get("kind", default), int(self.state_time*18)%8)
+                self.canvas.blit(image, image.get_rect(center=center))
 
     def throw_paper(self, aim_point):
-        if self.state != "game" or self.paused or self.phase != "combat" or self.boss_hp <= 0 or self.paper_cooldown > 0:
+        if (self.state != "game" or self.paused or self.phase != "combat"
+                or self.paper_cooldown > 0 or self.player_blocking or self.player_action == "hurt"):
             return
         origin = self.player + pygame.Vector2(0, -48)
         target = pygame.Vector2(aim_point)
@@ -1009,7 +948,9 @@ class Game:
         direction = direction.normalize()
         self.paper_projectiles.append({"pos": origin, "velocity": direction*520})
         self.paper_cooldown = 5.0
-        self.play_sfx("punch")
+        self.throw_direction = direction
+        self.player_throw_time = .24
+        self.play_sfx("throw")
 
     def spawn_rps_projectile(self, profile):
         kind = random.choice(("rock", "paper", "scissors"))
@@ -1018,9 +959,11 @@ class Game:
         direction = direction.normalize()
         self.projectiles.append({"pos": self.boss.copy(), "velocity": direction*profile["rps_speed"],
                                  "kind": kind, "damage": profile["rps_damage"]})
+        self.boss_throw_time = .28
+        self.play_sfx("throw")
 
-    def draw_impact(self, x, y):
-        color = (255, 232, 126)
+    def draw_impact(self, x, y, blocked=False):
+        color = CYAN if blocked else (255, 180, 110)
         radius = 20 if self.impact_timer > .09 else 13
         pygame.draw.circle(self.canvas, color, (x, y), radius, 3)
         for angle in range(0, 360, 45):
@@ -1100,42 +1043,27 @@ class Game:
         rect = pygame.Rect(80, 510, 1120, 195)
         self.panel(rect, (20, 22, 32, 245), (120, 140, 160))
         speaker, content = self.current_dialogue()
-        self.text(speaker+":", (105, 530), 19, GOLD)
-        self.wrapped(content, pygame.Rect(105, 565, 1065, 100), 18)
-        self.text(self.tx("> Pressione ESPAÇO ou ENTER para continuar", "> Press SPACE or ENTER to continue"), (1175, 677), 14, (175, 175, 180), center=False)
+        npc = self.room.residents[self.speaker]
+        name = npc.name[0].split(" • ")[0]
+        self.panel(pygame.Rect(101, 535, 121, 147), (31, 55, 65, 255), CYAN, 4)
+        pose = "talk" if self.speech_age < 2.4 and int(self.speech_age*12)%2 == 0 else "idle"
+        self.place_sprite(name, (161, 667), 3, pose)
+        self.text(speaker, (249, 537), 22, GOLD)
+        self.wrapped(content, pygame.Rect(249, 578, 905, 86), 20)
+        self.text(self.tx("Espaço / Enter / E · Continuar", "Space / Enter / E · Continue"), (1010, 675), 15, (175, 175, 180), True)
 
     def current_dialogue(self):
-        if self.settings["language"] == "en":
-            controls = "GAME CONTROLS:\n  W / A / S / D or Arrows — Move\n  SPACE or Z — Punch"
-            if self.blocking_available(): controls += "\n  Hold C or Shift — Block while held, up to one attack"
-            controls += "\n  Left mouse button — Throw paper ball (40 damage)"
-            seq = [
-                ("Teacher (Aticadores)", f"Hey, {self.name}! Great to have you on the team!\nWe're Aticadores LTDA — the best group in school!"),
-                ("Teacher (Aticadores)", "There is a hidden hierarchy here. The White Room controls everything\nand stops the fun from spreading through the school."),
-                ("Teacher (Aticadores)", controls),
-                ("Teacher (Aticadores)", "Look over there! The BOSS of the Battle Room is challenging us!\nHe's strong, but you can beat him with your punches. Go for it!"),
-            ]
-            return seq[min(self.dialogue_step, len(seq)-1)]
-        controls = "CONTROLES DO JOGO:\n  W / A / S / D ou Setas — Mover\n  ESPAÇO ou Z — Dar soco"
-        if self.blocking_available(): controls += "\n  Segure C ou Shift — Bloqueia enquanto pressionado, até um ataque"
-        controls += "\n  Botão esquerdo do mouse — Jogar bolinha de papel (40 de dano)"
-        seq = [
-            ("Professor (Aticadores)", f"Ei, {self.name}! Que bom ter você na equipe!\nSomos os Aticadores LTDA — o melhor grupo da escola!"),
-            ("Professor (Aticadores)", "Existe uma hierarquia oculta aqui. A Sala Branca controla tudo\ne impede que a resenha se espalhe pela escola."),
-            ("Professor (Aticadores)", controls),
-            ("Professor (Aticadores)", "Olha ali! O CHEFÃO da Sala da Batalha está nos desafiando!\nEle é forte, mas você consegue derrotá-lo com seus socos. Vai lá!"),
-        ]
-        return seq[min(self.dialogue_step, len(seq)-1)]
+        npc = self.room.residents[self.speaker]
+        return self.tx(*npc.name), self.tx(*self.dialogue[self.dialogue_step]).replace("{name}", self.name)
 
     def render_victory(self):
-        self.canvas.fill((8, 27, 12))
-        pygame.draw.rect(self.canvas, (17, 80, 36, 30), (190, 38, 900, 644))
-        self.text(self.tx("*** PARABÉNS! ***", "*** CONGRATULATIONS! ***"), (640, 145), 54, GOLD, True)
-        self.text(self.tx(f"{self.name} venceu!", f"{self.name} won!"), (640, 225), 31, (115, 255, 140), True)
-        self.text(self.tx("Você concluiu a versão beta de", "You completed the beta version of"), (640, 330), 25, (220, 238, 250), True)
-        self.text("ATICADORES LTDA - THE GAME!" if self.settings["language"] == "en" else "ATICADORES LTDA - O JOGO!", (640, 370), 25, (220, 238, 250), True)
-        self.text(self.tx("O Chefão foi derrotado e a sala foi libertada!", "The boss is defeated and the room is free!"), (640, 435), 19, (185, 195, 195), True)
-        self.text(self.tx("A luta dos Aticadores continua...", "The Aticadores fight continues..."), (640, 466), 19, (185, 195, 195), True)
+        self.draw_campus(84)
+        self.panel(pygame.Rect(223, 79, 834, 558), (23, 42, 56, 242), GOLD)
+        self.text(self.tx("A RESENHA VOLTOU!", "THE GOOD TIMES ARE BACK!"), (640, 145), 49, GOLD, True)
+        self.text(self.tx(f"{self.name} reuniu as turmas no pátio.", f"{self.name} brought the groups together in the courtyard."), (640, 224), 24, WHITE, True)
+        for index, name in enumerate(("Levi", "Davi", self.gender, "Jaylson", "Bruno")):
+            y = 435-abs(round(7*math.sin(self.state_time*4+index*.55)))
+            self.place_sprite(name, (425+index*107, y), 3, "wave")
         self.button("play_again", self.tx("JOGAR NOVAMENTE", "PLAY AGAIN"), pygame.Rect(445, 555, 195, 52), font=17)
         self.button("main_menu", self.tx("MENU PRINCIPAL", "MAIN MENU"), pygame.Rect(660, 555, 180, 52), font=17)
 
@@ -1153,7 +1081,7 @@ class Game:
             alpha = round((1-float(self.settings["brightness"])) * 170)
             shade = pygame.Surface((W, H), pygame.SRCALPHA); shade.fill((0, 0, 0, alpha)); self.canvas.blit(shade, (0, 0))
         sw, sh = self.screen.get_size()
-        scaled = pygame.transform.smoothscale(self.canvas, (sw, sh))
+        scaled = pygame.transform.scale(self.canvas, (sw, sh))
         self.screen.blit(scaled, (0, 0))
         pygame.display.flip()
 
@@ -1185,6 +1113,10 @@ class Game:
             elif self.hit("credits", p): self.credits = True
             elif self.hit("quit", p): pygame.event.post(pygame.event.Event(pygame.QUIT))
         elif self.state == "select":
+            for role in ROLES:
+                if self.hit("role_"+role, p):
+                    self.role = role
+                    return
             if self.hit("back", p): self.set_state("menu")
             elif self.hit("prev_char", p): self.char_index = (self.char_index-1) % 2
             elif self.hit("next_char", p): self.char_index = (self.char_index+1) % 2
@@ -1229,8 +1161,10 @@ class Game:
                     if self.hit("slider_"+k, p): self.set_slider(k, p[0])
         elif self.state == "game":
             if self.phase == "lost":
-                if self.hit("retry_death", p): self.start_game()
-                elif self.hit("menu_death", p): self.paused = False; self.set_music(); self.set_state("menu")
+                if self.hit("retry_death", p):
+                    self.enter_room(self.room_index)
+                    self.begin_combat()
+                elif self.hit("menu_death", p): self.paused = False; self.set_state("menu")
             elif self.paused:
                 if self.hit("pause_resume", p): self.paused = False
                 elif self.hit("pause_settings", p):
@@ -1240,7 +1174,7 @@ class Game:
                 elif self.hit("pause_save_exit", p):
                     if self.save_game(): self.paused = False; self.saved_prompt = False; self.set_state("menu")
                     else: self.feedback = self.tx("Não foi possível salvar a partida.", "Could not save the game.")
-            elif self.phase == "intro": self.advance_dialogue()
+            elif self.phase in ("intro", "verdict"): self.advance_dialogue()
         elif self.state == "victory":
             if self.hit("play_again", p): self.name_edit = self.name; self.set_state("select")
             elif self.hit("main_menu", p): self.set_state("menu")
@@ -1251,23 +1185,60 @@ class Game:
 
     def advance_dialogue(self):
         self.dialogue_step += 1
-        if self.dialogue_step >= 4:
-            self.phase = "combat"
-            self.set_music(fast=True)
+        if self.dialogue_step < len(self.dialogue):
+            self.play_dialogue_voice()
+            return
+        self.stop_dialogue_voice()
+        if self.phase == "verdict":
+            self.phase = "cleared"
+            self.speaker = None
+        else:
+            self.talked.add(self.speaker)
+            self.phase = "explore"
+            self.speaker = None
+
+    def begin_combat(self):
+        self.phase = "combat"
+        self.player.update(640, 540)
+        self.direction.update(0, -1)
+        self.boss.update(640, 320)
+        self.dash_time = 0
+
+    @staticmethod
+    def movement_input():
+        keys = pygame.key.get_pressed()
+        return pygame.Vector2(
+            int(keys[pygame.K_d] or keys[pygame.K_RIGHT])-int(keys[pygame.K_a] or keys[pygame.K_LEFT]),
+            int(keys[pygame.K_s] or keys[pygame.K_DOWN])-int(keys[pygame.K_w] or keys[pygame.K_UP]),
+        )
 
     def update_game(self, dt):
+        self.speech_age += dt
+        self.player_throw_time = max(0.0, self.player_throw_time-dt)
+        self.boss_throw_time = max(0.0, self.boss_throw_time-dt)
         if self.phase == "lost":
             return
+        self.boss_hurt_timer = max(0.0, self.boss_hurt_timer-dt)
+        self.attack_flash = max(0.0, self.attack_flash-dt)
+        self.impact_timer = max(0.0, self.impact_timer-dt)
         if self.phase == "won":
-            if self.state_time > 1.5: self.set_state("victory")
+            if self.state_time > .7: self.show_verdict()
             return
-        if self.phase != "combat": return
-        self.paper_cooldown = max(0.0, self.paper_cooldown-dt)
-        keys = pygame.key.get_pressed()
+        if self.phase not in ("explore", "cleared", "combat"):
+            return
         self.block_flash = max(0.0, self.block_flash-dt)
-        move = pygame.Vector2(int(keys[pygame.K_d] or keys[pygame.K_RIGHT])-int(keys[pygame.K_a] or keys[pygame.K_LEFT]),
-                              int(keys[pygame.K_s] or keys[pygame.K_DOWN])-int(keys[pygame.K_w] or keys[pygame.K_UP]))
-        if move.length_squared():
+        self.skill_timer = max(0.0, self.skill_timer-dt)
+        move = self.movement_input()
+        if self.dash_time > 0:
+            duration = min(dt, self.dash_time)
+            distance = 650*duration
+            steps = max(1, math.ceil(distance/8))
+            previous_player = self.player.copy()
+            for _ in range(steps):
+                self.move_with_room_collision(self.player, self.dash_direction*(distance/steps))
+            self.player_moving = self.player.distance_to(previous_player) > .05
+            self.dash_time = max(0.0, self.dash_time-dt) if self.player_moving else 0.0
+        elif move.length_squared():
             self.direction = move.normalize()
             previous_player = self.player.copy()
             travel = self.direction * (115 if self.player_blocking else 200) * dt
@@ -1279,12 +1250,22 @@ class Game:
             self.walk_anim_time += dt
         else:
             self.walk_anim_time = 0.0
+        if self.phase != "combat":
+            self.check_passage()
+            return
 
+        self.paper_cooldown = max(0.0, self.paper_cooldown-dt)
+        self.combat_message_timer = max(0.0, self.combat_message_timer-dt)
+        self.guard_clock += dt
+        self.ally_timer -= dt
+        if self.ally_timer <= 0:
+            self.ally_timer = 6.0
+            self.damage_boss(8, assist=True)
+            self.announce_combat(self.tx("Cobertura dos Atiçadores!", "Atiçadores cover fire!"))
+            if self.phase != "combat":
+                return
         self.attack_timer = max(0.0, self.attack_timer-dt)
         self.player_hurt_timer = max(0.0, self.player_hurt_timer-dt)
-        self.boss_hurt_timer = max(0.0, self.boss_hurt_timer-dt)
-        self.attack_flash = max(0.0, self.attack_flash-dt)
-        self.impact_timer = max(0.0, self.impact_timer-dt)
         profile = self.difficulty_profile()
         if self.player_action == "punch":
             self.player_action_time += dt
@@ -1293,6 +1274,8 @@ class Game:
                 target = self.player + self.player_action_direction*44
                 if self.boss.distance_to(target) <= 62:
                     self.damage_boss(20)
+                    if self.phase != "combat":
+                        return
             if self.player_action_time >= .38:
                 self.player_action = "idle"
         elif self.player_action == "hurt":
@@ -1302,7 +1285,8 @@ class Game:
         diff = self.player - self.boss
         if diff.length_squared(): self.boss_direction = diff.normalize()
         old_boss = self.boss.copy()
-        if diff.length_squared():
+        ranged_gap = self.room_index == 2 and diff.length() < 165
+        if diff.length_squared() and not ranged_gap and self.boss_action != "attack":
             travel = diff.normalize() * min(profile["speed"]*dt, diff.length())
             self.move_with_room_collision(self.boss, travel, radius=20)
         self.boss_moving = self.boss.distance_to(old_boss) > .05
@@ -1315,6 +1299,8 @@ class Game:
             if self.boss_action_time >= .25 and not self.boss_action_hit:
                 self.boss_action_hit = True
                 if self.player.distance_to(self.boss) <= 88: self.damage_player(profile["damage"])
+                if self.phase != "combat":
+                    return
             if self.boss_action_time >= .58: self.boss_action = "idle"
         elif self.boss_action == "hurt":
             self.boss_action_time += dt
@@ -1335,8 +1321,10 @@ class Game:
         for shot in self.projectiles[:]:
             shot["pos"] += shot["velocity"]*dt
             if shot["pos"].distance_to(self.player) < 30:
-                self.damage_player(shot["damage"])
                 self.projectiles.remove(shot)
+                self.damage_player(shot["damage"])
+                if self.phase != "combat":
+                    return
             elif not pygame.Rect(-40, -40, W+80, H+80).collidepoint(shot["pos"].x, shot["pos"].y):
                 self.projectiles.remove(shot)
         for shot in self.paper_projectiles[:]:
@@ -1351,7 +1339,7 @@ class Game:
                 self.paper_projectiles.remove(shot)
 
     def damage_player(self, amount):
-        if self.player_hp <= 0: return
+        if self.phase != "combat" or self.player_hp <= 0: return
         if self.player_blocking:
             self.player_blocking = False
             self.block_press_consumed = True
@@ -1360,6 +1348,7 @@ class Game:
             self.impact_position = self.player.copy()
             self.impact_timer = .14
             return
+        self.dash_time = 0.0
         self.player_hp = max(0, self.player_hp-1)
         self.player_action = "hurt"
         self.player_action_time = 0.0
@@ -1375,27 +1364,74 @@ class Game:
             self.player_action_time = 0.0
             self.paused = False
             self.boss_action = "idle"
-            self.set_music(sad=True)
 
-    def damage_boss(self, amount):
-        if self.boss_hp <= 0: return
+    def damage_boss(self, amount, *, break_guard=False, assist=False):
+        if self.phase != "combat" or self.boss_hp <= 0: return
+        if self.guarding and not break_guard:
+            self.boss_hp = max(1, self.boss_hp-max(1, amount//4))
+            if not assist:
+                self.announce_combat(self.tx("Guarda ativa! Espere a abertura.", "Guard up! Wait for an opening."))
+            return
+        if break_guard and self.guarding:
+            self.guard_clock = 0.0
         self.boss_hp = max(0, self.boss_hp-amount)
-        self.boss_action = "hurt"
-        self.boss_action_time = 0.0
-        self.boss_hurt_timer = .30
-        self.boss_action_hit = False
+        if not assist:
+            if self.boss_action != "attack" or break_guard:
+                self.boss_action = "hurt"
+                self.boss_action_time = 0.0
+                self.boss_action_hit = False
+            self.boss_hurt_timer = .30
         self.attack_flash = .18
         self.play_sfx("hit")
         self.impact_position = self.boss.copy()
         self.impact_timer = .18
         if self.boss_hp <= 0:
-            self.phase = "won"
-            self.state_time = 0
-            self.boss_action = "hurt"
-            self.set_music()
-            self.play_sfx("victory")
-            try: self.save_path.unlink(missing_ok=True)
-            except OSError: pass
+            self.finish_combat()
+
+    def finish_combat(self):
+        self.phase = "won"
+        self.state_time = 0
+        self.player_action = "idle"
+        self.player_action_time = self.player_hurt_timer = self.player_throw_time = 0.0
+        self.player_action_hit = False
+        self.player_blocking = self.block_press_consumed = False
+        self.block_keys_down.clear()
+        self.block_flash = self.dash_time = 0.0
+        self.player_moving = self.boss_moving = False
+        self.walk_anim_time = 0.0
+        self.boss_action = "hurt"
+        self.boss_throw_time = 0.0
+        self.projectiles.clear()
+        self.paper_projectiles.clear()
+        self.play_sfx("victory")
+
+    def announce_combat(self, message):
+        self.combat_message = message
+        self.combat_message_timer = 1.2
+
+    def use_role_skill(self):
+        can_dash = self.role == "sprinter" and self.phase in ("explore", "cleared", "combat")
+        if (self.phase != "combat" and not can_dash) or self.skill_timer > 0 or self.player_action == "hurt":
+            return
+        if self.role == "attack":
+            if self.player.distance_to(self.boss) > 115:
+                self.announce_combat(self.tx("Aproxime-se para usar Ruptura.", "Move closer to use Breakthrough."))
+                return
+            self.damage_boss(55, break_guard=True)
+        elif can_dash:
+            move = self.movement_input()
+            self.dash_direction = move.normalize() if move.length_squared() else self.direction.copy()
+            self.direction = self.dash_direction.copy()
+            self.dash_time = .24
+            self.player_blocking = False
+        else:
+            if self.player_hp == self.player_hp_max:
+                self.announce_combat(self.tx("Seus corações já estão cheios.", "Your hearts are already full."))
+                return
+            self.player_hp = min(self.player_hp_max, self.player_hp+2)
+        role = ROLES[self.role]
+        self.skill_timer = role.cooldown
+        self.announce_combat(self.tx(*role.skill))
 
     def punch(self):
         if self.phase != "combat" or self.attack_timer > 0 or self.player_action == "hurt" or self.player_blocking: return
@@ -1408,7 +1444,7 @@ class Game:
 
     def arm_block(self):
         """Arma um bloqueio enquanto C/Shift estiver pressionado, uma vez por acionamento."""
-        if self.phase == "combat" and self.blocking_available() and self.player_action != "hurt" and not self.block_press_consumed:
+        if self.phase == "combat" and self.player_action != "hurt" and not self.block_press_consumed:
             self.player_blocking = True
 
     def run(self):
@@ -1446,8 +1482,11 @@ class Game:
                     if block_key and not getattr(event, "repeat", False):
                         self.block_keys_down.add(event.key)
                     if event.key == pygame.K_ESCAPE:
-                        if self.state == "game" and self.phase == "lost": self.set_music(); self.set_state("menu")
-                        elif self.state == "game": self.paused = not self.paused
+                        if self.state == "game" and self.phase == "lost": self.set_state("menu")
+                        elif self.state == "game":
+                            self.paused = not self.paused
+                            if self.paused:
+                                self.stop_dialogue_voice()
                         elif self.state == "settings" and self.settings_return_to_pause:
                             self.settings_draft = self.settings.copy()
                             self.settings_return_to_pause = False
@@ -1462,8 +1501,10 @@ class Game:
                         self.name_edit += event.unicode
                     elif self.state == "game":
                         if not self.paused:
-                            if self.phase == "intro" and event.key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER): self.advance_dialogue()
-                            elif self.phase == "combat" and block_key and not getattr(event, "repeat", False) and self.blocking_available() and self.player_action != "hurt":
+                            if self.phase in ("intro", "verdict") and event.key in (pygame.K_e, pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER): self.advance_dialogue()
+                            elif self.phase == "explore" and event.key == pygame.K_e: self.interact()
+                            elif event.key == pygame.K_q and not getattr(event, "repeat", False): self.use_role_skill()
+                            elif block_key and not getattr(event, "repeat", False):
                                 self.arm_block()
                             elif event.key in (pygame.K_SPACE, pygame.K_z): self.punch()
             if self.state == "game" and not self.paused: self.update_game(dt)

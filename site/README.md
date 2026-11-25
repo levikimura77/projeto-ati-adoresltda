@@ -2,7 +2,7 @@
 
 Site de apresentação com visual inspirado em jogos 2D em pixel art. O formulário envia nome, e-mail e sugestão para um servidor Python, que salva os dados em SQLite.
 
-A seção **Download** disponibiliza `frontend/downloads/AticadoresLTDA.exe`, a compilação para Windows. Para atualizar o download depois de gerar uma nova versão, substitua esse arquivo pelo novo executável.
+A seção **Download** disponibiliza `frontend/downloads/AticadoresLTDA-Campanha.exe`, a mesma campanha distribuída na pasta `release/`. O script `build_windows.bat`, na raiz do projeto, atualiza as duas cópias.
 
 ## Executar no Windows
 
